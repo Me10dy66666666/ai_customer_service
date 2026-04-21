@@ -1,0 +1,14 @@
+﻿{
+    "maven.executable.path":  "D:\\KaiFa\\SofeWare\\JAVAWEB\\寮€鍙戠浉鍏崇殑瀹夎\\maven\\apache-maven-3.9.11-bin\\apache-maven-3.9.11\\bin\\mvn",
+    "java.configuration.maven.userSettings":  "D:\\KaiFa\\SofeWare\\JAVAWEB\\寮€鍙戠浉鍏崇殑瀹夎\\maven\\apache-maven-3.9.11-bin\\apache-maven-3.9.11\\conf\\settings.xml",
+    "java.compile.nullAnalysis.mode":  "automatic",
+    "java.configuration.updateBuildConfiguration":  "interactive",
+    "maven.view":  "hierarchical",
+    "python.defaultInterpreterPath":  "${workspaceFolder}/rag-service/.venv/Scripts/python.exe",
+    "python.analysis.extraPaths":  [
+                                       "${workspaceFolder}/rag-service"
+                                   ],
+    "python.autoComplete.extraPaths":  [
+                                           "${workspaceFolder}/rag-service"
+                                       ]
+}

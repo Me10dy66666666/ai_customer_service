@@ -1,0 +1,13 @@
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\common\GlobalExceptionHandler.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\config\DatabaseSchemaFixer.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\config\WebSocketConfig.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\AnalysisController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\AuthController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\ChatController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\HealthController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\KnowledgeBaseController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\OrderController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\UserProfileController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\controller\WorkOrderController.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\security\SecurityConfig.java
+D:\CodeFile\ai_customer_service\Backend\backend-web\src\main\java\com\example\backend\websocket\ChatWebSocketHandler.java

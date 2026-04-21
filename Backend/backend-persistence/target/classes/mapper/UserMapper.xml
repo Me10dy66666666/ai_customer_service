@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.entity.User">
+        <id column="id" property="id" />
+        <result column="username" property="username" />
+        <result column="password" property="password" />
+        <result column="nickname" property="nickname" />
+        <result column="phone" property="phone" />
+        <result column="email" property="email" />
+        <result column="user_type" property="userType" />
+        <result column="status" property="status" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <collection property="roles" ofType="com.example.backend.entity.Role">
+            <id column="role_id" property="id"/>
+            <result column="role_name" property="roleName"/>
+            <result column="role_description" property="description"/>
+        </collection>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        u.id, u.username, u.password, u.nickname, u.phone, u.email, u.user_type, u.status, u.create_time, u.update_time
+    </sql>
+    
+    <sql id="Role_Column_List">
+        r.id as role_id, r.role_name, r.description as role_description
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password, nickname, phone, email, user_type, status, create_time, update_time)
+        VALUES (#{username}, #{password}, #{nickname}, #{phone}, #{email}, #{userType}, #{status}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE users
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="userType != null">user_type = #{userType},</if>
+            <if test="status != null">status = #{status},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>, <include refid="Role_Column_List"/>
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id
+        LEFT JOIN roles r ON ur.role_id = r.id
+        WHERE u.id = #{id}
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>, <include refid="Role_Column_List"/>
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id
+        LEFT JOIN roles r ON ur.role_id = r.id
+    </select>
+
+    <select id="findByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>, <include refid="Role_Column_List"/>
+        FROM users u
+        LEFT JOIN user_roles ur ON u.id = ur.user_id
+        LEFT JOIN roles r ON ur.role_id = r.id
+        WHERE u.username = #{username}
+        LIMIT 1
+    </select>
+
+    <select id="existsByUsername" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM users WHERE username = #{username})
+    </select>
+
+    <select id="existsByPhone" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM users WHERE phone = #{phone})
+    </select>
+
+    <insert id="insertUserRole">
+        INSERT INTO user_roles (user_id, role_id) VALUES (#{userId}, #{roleId})
+    </insert>
+
+</mapper>

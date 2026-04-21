@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.mapper.UserProfileMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.entity.UserProfile">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="session_id" property="sessionId" />
+        <result column="user_type" property="userType" />
+        <result column="satisfaction_score" property="satisfactionScore" />
+        <result column="preferred_products" property="preferredProducts" />
+        <result column="purchase_frequency" property="purchaseFrequency" />
+        <result column="total_spending" property="totalSpending" />
+        <result column="service_times" property="serviceTimes" />
+        <result column="last_purchase_time" property="lastPurchaseTime" />
+        <result column="last_service_time" property="lastServiceTime" />
+        <result column="tags" property="tags" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, session_id, user_type, satisfaction_score, preferred_products, purchase_frequency, total_spending, service_times, last_purchase_time, last_service_time, tags, update_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_profiles (user_id, session_id, user_type, satisfaction_score, preferred_products, purchase_frequency, total_spending, service_times, last_purchase_time, last_service_time, tags, update_time)
+        VALUES (#{userId}, #{sessionId}, #{userType}, #{satisfactionScore}, #{preferredProducts}, #{purchaseFrequency}, #{totalSpending}, #{serviceTimes}, #{lastPurchaseTime}, #{lastServiceTime}, #{tags}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE user_profiles
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="userType != null">user_type = #{userType},</if>
+            <if test="satisfactionScore != null">satisfaction_score = #{satisfactionScore},</if>
+            <if test="preferredProducts != null">preferred_products = #{preferredProducts},</if>
+            <if test="purchaseFrequency != null">purchase_frequency = #{purchaseFrequency},</if>
+            <if test="totalSpending != null">total_spending = #{totalSpending},</if>
+            <if test="serviceTimes != null">service_times = #{serviceTimes},</if>
+            <if test="lastPurchaseTime != null">last_purchase_time = #{lastPurchaseTime},</if>
+            <if test="lastServiceTime != null">last_service_time = #{lastServiceTime},</if>
+            <if test="tags != null">tags = #{tags},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM user_profiles WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM user_profiles WHERE id = #{id}
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM user_profiles
+    </select>
+
+    <select id="findByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM user_profiles WHERE user_id = #{userId} LIMIT 1
+    </select>
+
+    <select id="findBySessionId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM user_profiles WHERE session_id = #{sessionId} LIMIT 1
+    </select>
+
+    <select id="listByConditions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_profiles
+        <where>
+            <if test="userType != null and userType != '' and userType != 'All'">
+                <choose>
+                    <when test="userType == 'MEMBER'">
+                        (
+                        UPPER(user_type) = 'MEMBER'
+                        OR (
+                        user_id IS NOT NULL
+                        AND (
+                        COALESCE(total_spending, 0) &gt; 0
+                        OR COALESCE(purchase_frequency, 0) &gt; 0
+                        )
+                        )
+                        )
+                    </when>
+                    <when test="userType == 'REGISTERED'">
+                        (
+                        UPPER(user_type) = 'REGISTERED'
+                        OR (
+                        user_id IS NOT NULL
+                        AND COALESCE(total_spending, 0) &lt;= 0
+                        AND COALESCE(purchase_frequency, 0) &lt;= 0
+                        AND COALESCE(UPPER(user_type), '') &lt;&gt; 'MEMBER'
+                        )
+                        )
+                    </when>
+                    <otherwise>
+                        UPPER(user_type) = UPPER(#{userType})
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="startDate != null and endDate != null">
+                AND last_service_time BETWEEN #{startDate} AND #{endDate}
+            </if>
+        </where>
+        ORDER BY update_time DESC, id DESC
+    </select>
+
+</mapper>

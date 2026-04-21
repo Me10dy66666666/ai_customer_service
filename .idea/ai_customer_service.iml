@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="PYTHON_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$PROJECT_DIR$">
+      <sourceFolder url="file://$PROJECT_DIR$/rag-service/app" isTestSource="false" />
+      <sourceFolder url="file://$PROJECT_DIR$/rag-service/tests" isTestSource="true" />
+      <excludeFolder url="file://$PROJECT_DIR$/rag-service/.venv" />
+    </content>
+    <orderEntry type="jdk" jdkName="Python 3.14 (rag-service)" jdkType="Python SDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

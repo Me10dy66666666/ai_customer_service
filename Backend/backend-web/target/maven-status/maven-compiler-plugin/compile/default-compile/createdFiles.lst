@@ -1,0 +1,13 @@
+com\example\backend\controller\AuthController.class
+com\example\backend\config\WebSocketConfig.class
+com\example\backend\common\GlobalExceptionHandler.class
+com\example\backend\controller\UserProfileController.class
+com\example\backend\security\SecurityConfig.class
+com\example\backend\config\DatabaseSchemaFixer.class
+com\example\backend\controller\AnalysisController.class
+com\example\backend\controller\HealthController.class
+com\example\backend\controller\OrderController.class
+com\example\backend\controller\KnowledgeBaseController.class
+com\example\backend\controller\ChatController.class
+com\example\backend\websocket\ChatWebSocketHandler.class
+com\example\backend\controller\WorkOrderController.class

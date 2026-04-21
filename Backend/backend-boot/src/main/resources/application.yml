@@ -1,0 +1,50 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+      enabled: true
+  application:
+    name: ai-customer-service-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/ai_customer_service?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: "051014@Lmm"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  cache:
+    type: redis
+    redis:
+      time-to-live: 86400000
+      cache-null-values: false
+      key-prefix: "ai_service:"
+      use-key-prefix: true
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.backend.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+server:
+  port: 8081
+
+dify:
+  api:
+    base-url: https://api.dify.ai/v1
+    key: dataset-R3mpcBcmNeoYk6omsDCIbSd9
+    dataset-id: bc9fd493-2d13-487f-949e-36ce4e225c1a
+  chat:
+    key: app-20HIRUlC82XS1ihPvUOQZ4wS
+    timeout: 10000
+    retry: 3

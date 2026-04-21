@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.mapper.WorkOrderMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.entity.WorkOrder">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="title" property="title" />
+        <result column="description" property="description" />
+        <result column="type" property="type" />
+        <result column="priority" property="priority" />
+        <result column="status" property="status" />
+        <result column="handler_id" property="handlerId" />
+        <result column="result" property="result" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, title, description, type, priority, status, handler_id, result, create_time, update_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO work_orders (user_id, title, description, type, priority, status, handler_id, result, create_time, update_time)
+        VALUES (#{userId}, #{title}, #{description}, #{type}, #{priority}, #{status}, #{handlerId}, #{result}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE work_orders
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="priority != null">priority = #{priority},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="handlerId != null">handler_id = #{handlerId},</if>
+            <if test="result != null">result = #{result},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM work_orders WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE id = #{id}
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM work_orders
+    </select>
+
+    <select id="findByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE status = #{status}
+    </select>
+
+    <select id="findByHandlerId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE handler_id = #{handlerId}
+    </select>
+
+    <select id="countByStatusBetween" resultType="java.util.Map">
+        SELECT status AS statusKey, COUNT(*) AS totalCount
+        FROM work_orders
+        WHERE create_time BETWEEN #{start} AND #{end}
+        GROUP BY status
+    </select>
+
+    <select id="countWorkOrderTrendByDate" resultType="java.util.Map">
+        SELECT DATE(create_time) AS statDate, COUNT(*) AS totalCount
+        FROM work_orders
+        WHERE create_time BETWEEN #{start} AND #{end}
+        GROUP BY DATE(create_time)
+        ORDER BY statDate
+    </select>
+
+</mapper>

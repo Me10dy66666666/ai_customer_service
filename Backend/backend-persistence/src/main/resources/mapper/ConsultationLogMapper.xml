@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.mapper.ConsultationLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.entity.ConsultationLog">
+        <id column="id" property="id" />
+        <result column="session_id" property="sessionId" />
+        <result column="user_id" property="userId" />
+        <result column="user_type" property="userType" />
+        <result column="user_input" property="userInput" />
+        <result column="ai_response" property="aiResponse" />
+        <result column="dify_conversation_id" property="difyConversationId" />
+        <result column="intent" property="intent" />
+        <result column="channel" property="channel" />
+        <result column="duration" property="duration" />
+        <result column="satisfaction" property="satisfaction" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, session_id, user_id, user_type, user_input, ai_response, dify_conversation_id, intent, channel, duration, satisfaction, create_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO consultation_logs (session_id, user_id, user_type, user_input, ai_response, dify_conversation_id, intent, channel, duration, satisfaction, create_time)
+        VALUES (#{sessionId}, #{userId}, #{userType}, #{userInput}, #{aiResponse}, #{difyConversationId}, #{intent}, #{channel}, #{duration}, #{satisfaction}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE consultation_logs
+        <set>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="userType != null">user_type = #{userType},</if>
+            <if test="userInput != null">user_input = #{userInput},</if>
+            <if test="aiResponse != null">ai_response = #{aiResponse},</if>
+            <if test="difyConversationId != null">dify_conversation_id = #{difyConversationId},</if>
+            <if test="intent != null">intent = #{intent},</if>
+            <if test="channel != null">channel = #{channel},</if>
+            <if test="duration != null">duration = #{duration},</if>
+            <if test="satisfaction != null">satisfaction = #{satisfaction},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM consultation_logs WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM consultation_logs WHERE id = #{id}
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM consultation_logs
+    </select>
+
+    <select id="findBySessionIdOrderByCreateTimeAsc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> 
+        FROM consultation_logs 
+        WHERE session_id = #{sessionId} 
+        ORDER BY create_time ASC
+    </select>
+
+    <select id="findByUserIdOrderByCreateTimeDesc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> 
+        FROM consultation_logs 
+        WHERE user_id = #{userId} 
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findByUserIdOrderByCreateTimeAsc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM consultation_logs
+        WHERE user_id = #{userId}
+        ORDER BY create_time ASC
+    </select>
+
+    <select id="findByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM consultation_logs
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findFirstBySessionIdOrderByCreateTimeDesc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> 
+        FROM consultation_logs 
+        WHERE session_id = #{sessionId} 
+        ORDER BY create_time DESC 
+        LIMIT 1
+    </select>
+
+    <select id="findFirstBySessionIdAndDifyConversationIdIsNotNullOrderByCreateTimeDesc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> 
+        FROM consultation_logs 
+        WHERE session_id = #{sessionId} AND dify_conversation_id IS NOT NULL 
+        ORDER BY create_time DESC 
+        LIMIT 1
+    </select>
+
+    <select id="countByCreateTimeBetween" resultType="long">
+        SELECT COUNT(*) 
+        FROM consultation_logs 
+        WHERE create_time BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="countSatisfactionByDate" resultType="java.util.Map">
+        SELECT satisfaction AS satisfactionLevel, COUNT(*) AS totalCount
+        FROM consultation_logs 
+        WHERE create_time BETWEEN #{start} AND #{end} 
+        GROUP BY satisfaction
+    </select>
+
+    <select id="countTrendByDate" resultType="java.util.Map">
+        SELECT DATE(create_time) AS statDate, COUNT(*) AS totalCount
+        FROM consultation_logs 
+        WHERE create_time BETWEEN #{start} AND #{end} 
+        GROUP BY DATE(create_time)
+    </select>
+
+    <select id="countTrendWithSatisfactionByDate" resultType="java.util.Map">
+        SELECT DATE(create_time) AS statDate, COUNT(*) AS totalCount, AVG(satisfaction) AS avgScore
+        FROM consultation_logs 
+        WHERE create_time BETWEEN #{start} AND #{end} 
+        GROUP BY DATE(create_time) 
+        ORDER BY statDate
+    </select>
+
+    <select id="countUniqueUsersByDate" resultType="java.util.Map">
+        SELECT DATE(c.create_time) AS statDate, COUNT(DISTINCT COALESCE(c.user_id, c.session_id)) AS userCount
+        FROM consultation_logs c
+        WHERE c.create_time BETWEEN #{start} AND #{end}
+        GROUP BY DATE(c.create_time)
+        ORDER BY statDate
+    </select>
+
+    <select id="countConvertedUsersByDate" resultType="java.util.Map">
+        SELECT DATE(c.create_time) AS statDate, COUNT(DISTINCT COALESCE(c.user_id, c.session_id)) AS userCount
+        FROM consultation_logs c
+        WHERE c.create_time BETWEEN #{start} AND #{end}
+        AND EXISTS (
+            SELECT 1 FROM historical_orders o 
+            WHERE (o.user_id = c.user_id OR (c.session_id IS NOT NULL AND o.user_id IS NOT NULL))
+            AND o.create_time >= c.create_time
+        )
+        GROUP BY DATE(c.create_time)
+        ORDER BY statDate
+    </select>
+
+    <select id="countKbUsageByDate" resultType="java.util.Map">
+        SELECT DATE(create_time) AS statDate, COUNT(*) AS usageCount
+        FROM consultation_logs
+        WHERE create_time BETWEEN #{start} AND #{end}
+        AND ai_response IS NOT NULL AND ai_response != ''
+        GROUP BY DATE(create_time)
+        ORDER BY statDate
+    </select>
+
+</mapper>

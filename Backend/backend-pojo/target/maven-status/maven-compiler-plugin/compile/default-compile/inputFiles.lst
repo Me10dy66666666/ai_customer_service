@@ -1,0 +1,11 @@
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\dto\LoginRequest.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\dto\LoginResponse.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\dto\RegisterRequest.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\dto\RegisterResponse.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\entity\ConsultationLog.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\entity\Document.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\entity\HistoricalOrder.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\entity\Role.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\entity\User.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\entity\UserProfile.java
+D:\CodeFile\ai_customer_service\Backend\backend-pojo\src\main\java\com\example\backend\entity\WorkOrder.java

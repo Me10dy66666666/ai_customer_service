@@ -1,0 +1,10 @@
+com\example\backend\service\OrderService.class
+com\example\backend\service\UserProfileService.class
+com\example\backend\service\WorkOrderService.class
+com\example\backend\client\DifyClient.class
+com\example\backend\client\DifyClient$1.class
+com\example\backend\service\ChatService.class
+com\example\backend\service\KnowledgeBaseService.class
+com\example\backend\service\AnalysisService.class
+com\example\backend\security\JwtUtils.class
+com\example\backend\service\AuthService.class

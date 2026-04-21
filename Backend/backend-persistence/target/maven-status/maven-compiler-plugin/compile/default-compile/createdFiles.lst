@@ -1,0 +1,7 @@
+com\example\backend\mapper\DocumentMapper.class
+com\example\backend\mapper\RoleMapper.class
+com\example\backend\mapper\UserProfileMapper.class
+com\example\backend\mapper\HistoricalOrderMapper.class
+com\example\backend\mapper\WorkOrderMapper.class
+com\example\backend\mapper\UserMapper.class
+com\example\backend\mapper\ConsultationLogMapper.class

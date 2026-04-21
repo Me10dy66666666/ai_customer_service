@@ -1,0 +1,11 @@
+com\example\backend\dto\RegisterResponse.class
+com\example\backend\dto\RegisterRequest.class
+com\example\backend\entity\Document.class
+com\example\backend\entity\HistoricalOrder.class
+com\example\backend\entity\ConsultationLog.class
+com\example\backend\dto\LoginRequest.class
+com\example\backend\entity\WorkOrder.class
+com\example\backend\entity\Role.class
+com\example\backend\dto\LoginResponse.class
+com\example\backend\entity\User.class
+com\example\backend\entity\UserProfile.class

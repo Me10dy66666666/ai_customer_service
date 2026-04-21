@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.mapper.HistoricalOrderMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.entity.HistoricalOrder">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="order_no" property="orderNo" />
+        <result column="product_name" property="productName" />
+        <result column="product_model" property="productModel" />
+        <result column="quantity" property="quantity" />
+        <result column="price" property="price" />
+        <result column="total_amount" property="totalAmount" />
+        <result column="order_status" property="orderStatus" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, order_no, product_name, product_model, quantity, price, total_amount, order_status, create_time, update_time
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO historical_orders (user_id, order_no, product_name, product_model, quantity, price, total_amount, order_status, create_time, update_time)
+        VALUES (#{userId}, #{orderNo}, #{productName}, #{productModel}, #{quantity}, #{price}, #{totalAmount}, #{orderStatus}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE historical_orders
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="orderNo != null">order_no = #{orderNo},</if>
+            <if test="productName != null">product_name = #{productName},</if>
+            <if test="productModel != null">product_model = #{productModel},</if>
+            <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="totalAmount != null">total_amount = #{totalAmount},</if>
+            <if test="orderStatus != null">order_status = #{orderStatus},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM historical_orders WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM historical_orders WHERE id = #{id}
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM historical_orders
+    </select>
+
+    <select id="findByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM historical_orders WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByUserIdOrderByCreateTimeDesc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM historical_orders WHERE user_id = #{userId} ORDER BY create_time DESC
+    </select>
+
+</mapper>
