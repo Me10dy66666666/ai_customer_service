@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.PermissionMapper">
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.Permission">
+        <id column="id" property="id" />
+        <result column="code" property="code" />
+        <result column="name" property="name" />
+        <result column="resource" property="resource" />
+        <result column="action" property="action" />
+        <result column="description" property="description" />
+    </resultMap>
+    <sql id="Base_Column_List">id, code, name, resource, action, description</sql>
+    <select id="selectAll" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM permissions</select>
+    <select id="selectByRoleId" resultMap="BaseResultMap">
+        SELECT p.id, p.code, p.name, p.resource, p.action, p.description
+        FROM permissions p INNER JOIN role_permissions rp ON p.id = rp.permission_id
+        WHERE rp.role_id = #{roleId}
+    </select>
+    <delete id="deleteRolePermissions">DELETE FROM role_permissions WHERE role_id = #{roleId}</delete>
+    <insert id="insertRolePermission">
+        INSERT INTO role_permissions (role_id, permission_id) VALUES (#{roleId}, #{permissionId})
+    </insert>
+</mapper>

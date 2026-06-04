@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.OcrSegmentMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.OcrSegmentEntity">
+        <id column="id" property="id"/>
+        <result column="document_id" property="documentId"/>
+        <result column="segment_index" property="segmentIndex"/>
+        <result column="ocr_text" property="ocrText"/>
+        <result column="reviewed_text" property="reviewedText"/>
+        <result column="confidence" property="confidence"/>
+        <result column="bounding_box" property="boundingBox"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, document_id, segment_index, ocr_text, reviewed_text,
+        confidence, bounding_box, status, created_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO knowledge_ocr_segments (document_id, segment_index, ocr_text, reviewed_text,
+            confidence, bounding_box, status, created_at)
+        VALUES (#{documentId}, #{segmentIndex}, #{ocrText}, #{reviewedText},
+            #{confidence}, #{boundingBox}, #{status}, NOW())
+    </insert>
+
+    <insert id="insertBatch" parameterType="list">
+        INSERT INTO knowledge_ocr_segments (document_id, segment_index, ocr_text, reviewed_text,
+            confidence, bounding_box, status, created_at)
+        VALUES
+        <foreach collection="segments" item="seg" separator=",">
+            (#{seg.documentId}, #{seg.segmentIndex}, #{seg.ocrText}, #{seg.reviewedText},
+             #{seg.confidence}, #{seg.boundingBox}, #{seg.status}, NOW())
+        </foreach>
+    </insert>
+
+    <select id="findByDocumentIdOrderBySegmentIndex" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_ocr_segments
+        WHERE document_id = #{documentId} ORDER BY segment_index ASC
+    </select>
+
+    <select id="findByDocumentIdAndStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_ocr_segments
+        WHERE document_id = #{documentId} AND status = #{status} ORDER BY segment_index ASC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE knowledge_ocr_segments
+        SET status = #{status},
+            reviewed_text = #{reviewedText}
+        WHERE id = #{id} AND document_id = #{documentId}
+    </update>
+
+    <delete id="deleteByDocumentId">
+        DELETE FROM knowledge_ocr_segments WHERE document_id = #{documentId}
+    </delete>
+</mapper>

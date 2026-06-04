@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.KnowledgeViewLogMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO knowledge_view_log (document_id, viewer_id, viewer_role, viewed_at)
+        VALUES (#{documentId}, #{viewerId}, #{viewerRole}, NOW())
+    </insert>
+
+    <select id="countByDateRange" resultType="long">
+        SELECT COUNT(*) FROM knowledge_view_log
+        WHERE viewed_at BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="topDocuments" resultType="map">
+        SELECT d.title, COUNT(vl.id) AS view_count
+        FROM knowledge_view_log vl
+        JOIN knowledge_documents d ON d.id = vl.document_id
+        WHERE vl.viewed_at BETWEEN #{start} AND #{end}
+        GROUP BY vl.document_id, d.title
+        ORDER BY view_count DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="monthlyTrend" resultType="map">
+        SELECT DATE_FORMAT(viewed_at, '%Y-%m') AS month, COUNT(*) AS view_count
+        FROM knowledge_view_log
+        WHERE viewed_at >= #{start}
+        GROUP BY month
+        ORDER BY month
+    </select>
+
+    <select id="findUnviewedDocumentIds" resultType="long">
+        SELECT DISTINCT kd.id
+        FROM knowledge_documents kd
+        LEFT JOIN knowledge_view_log vl ON vl.document_id = kd.id
+        WHERE kd.status = 'PUBLISHED'
+          AND kd.created_at &lt;= #{since}
+          AND vl.id IS NULL
+    </select>
+</mapper>

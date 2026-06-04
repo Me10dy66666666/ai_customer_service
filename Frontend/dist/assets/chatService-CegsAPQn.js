@@ -1,0 +1,1 @@
+import{p as t}from"./index-DhqhX-wv.js";const i=s=>t.get("/api/chat/history",{params:{sessionId:s}}),o=s=>t.get("/api/chat/messages",{params:{sessionId:s}}),p=s=>t.post("/api/chat/satisfaction",s);export{o as a,i as g,p as s};

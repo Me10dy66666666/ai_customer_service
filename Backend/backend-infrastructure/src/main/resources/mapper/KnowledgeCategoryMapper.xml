@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.KnowledgeCategoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.KnowledgeCategoryEntity">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="creator_id" property="creatorId"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="icon" property="icon"/>
+        <result column="description" property="description"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        SELECT id, name, creator_id, sort_order, icon, description, created_at, updated_at
+        FROM knowledge_categories
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="findByName" resultMap="BaseResultMap">
+        SELECT id, name, creator_id, sort_order, icon, description, created_at, updated_at
+        FROM knowledge_categories
+        WHERE name = #{name}
+    </select>
+
+    <insert id="insert" parameterType="com.example.backend.infrastructure.persistence.entity.KnowledgeCategoryEntity">
+        INSERT INTO knowledge_categories (name, creator_id, sort_order, icon, description)
+        VALUES (#{name}, #{creatorId}, #{sortOrder}, #{icon}, #{description})
+    </insert>
+
+    <delete id="deleteByName">
+        DELETE FROM knowledge_categories WHERE name = #{name}
+    </delete>
+
+    <select id="categoryStats" resultType="java.util.HashMap">
+        SELECT c.name, COUNT(d.id) AS count
+        FROM knowledge_categories c
+        LEFT JOIN knowledge_documents d ON d.category = c.name AND d.status = 'PUBLISHED' AND d.enabled = 1
+        GROUP BY c.name
+        ORDER BY count DESC, c.sort_order ASC
+    </select>
+
+</mapper>

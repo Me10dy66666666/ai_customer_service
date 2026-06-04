@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.KnowledgeSearchLogMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO knowledge_search_log (keyword, result_count, searcher_id, searched_at)
+        VALUES (#{keyword}, #{resultCount}, #{searcherId}, NOW())
+    </insert>
+
+    <select id="topKeywords" resultType="map">
+        SELECT keyword, COUNT(*) AS search_count
+        FROM knowledge_search_log
+        WHERE searched_at BETWEEN #{start} AND #{end}
+        GROUP BY keyword
+        ORDER BY search_count DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="zeroResultKeywords" resultType="map">
+        SELECT keyword, COUNT(*) AS search_count
+        FROM knowledge_search_log
+        WHERE result_count = 0
+        GROUP BY keyword
+        ORDER BY search_count DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="dailyHitRateTrend" resultType="map">
+        SELECT DATE(searched_at) AS statDate,
+               COUNT(*) AS totalCount,
+               SUM(CASE WHEN result_count > 0 THEN 1 ELSE 0 END) AS hitCount
+        FROM knowledge_search_log
+        WHERE searched_at BETWEEN #{start} AND #{end}
+        GROUP BY DATE(searched_at)
+        ORDER BY statDate
+    </select>
+
+    <select id="dailyEffectTrend" resultType="map">
+        SELECT DATE(searched_at) AS statDate,
+               COUNT(*) AS searchCount,
+               SUM(CASE WHEN result_count > 0 THEN 1 ELSE 0 END) AS hitCount
+        FROM knowledge_search_log
+        WHERE searched_at BETWEEN #{start} AND #{end}
+        GROUP BY DATE(searched_at)
+        ORDER BY statDate
+    </select>
+
+    <select id="countByDateRange" resultType="long">
+        SELECT COUNT(*) FROM knowledge_search_log
+        WHERE searched_at BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="countHitByDateRange" resultType="long">
+        SELECT COUNT(*) FROM knowledge_search_log
+        WHERE result_count > 0
+        AND searched_at BETWEEN #{start} AND #{end}
+    </select>
+</mapper>

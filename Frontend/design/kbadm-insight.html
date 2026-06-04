@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KB Admin Data Insight — 知识库管理员数据洞察</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Work+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+  --brand: oklch(0.52 0.135 175);
+  --brand-deep: oklch(0.38 0.105 175);
+  --brand-soft: oklch(0.85 0.040 175);
+  --brand-pale: oklch(0.94 0.018 175);
+  --base: oklch(0.955 0.005 98);
+  --base-alt: oklch(0.965 0.008 230);
+  --surface: oklch(0.975 0.005 95);
+  --ink: oklch(0.22 0.025 210);
+  --ink-soft: oklch(0.40 0.018 210);
+  --ink-muted: oklch(0.60 0.015 210);
+  --border: oklch(0.88 0.010 210);
+  --border-light: oklch(0.92 0.008 210);
+  --success: oklch(0.50 0.150 150);
+  --success-soft: oklch(0.90 0.040 150);
+  --warning: oklch(0.62 0.160 75);
+  --warning-soft: oklch(0.92 0.055 75);
+  --danger: oklch(0.50 0.170 20);
+  --danger-soft: oklch(0.93 0.035 20);
+  --kb: oklch(0.50 0.155 240);
+  --kb-soft: oklch(0.88 0.040 240);
+  --nav-bg: oklch(0.18 0.018 210);
+  --nav-text: oklch(0.72 0.015 210);
+  --nav-active: oklch(0.30 0.025 175);
+  --font-heading: 'Crimson Text', Georgia, 'Times New Roman', serif;
+  --font-body: 'Work Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px;
+  --radius-xl: 24px; --radius-full: 9999px;
+  --shadow-xs: 0 1px 2px oklch(0.25 0.01 250 / 0.04);
+  --shadow-sm: 0 2px 8px oklch(0.25 0.01 250 / 0.06);
+  --shadow-md: 0 8px 24px oklch(0.25 0.01 250 / 0.08);
+  --shadow-lg: 0 16px 48px oklch(0.25 0.01 250 / 0.10);
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px;
+  --s-7:28px; --s-8:32px; --s-9:36px; --s-10:40px; --s-12:48px;
+  --dur-fast: 150ms; --dur-normal: 280ms; --dur-slow: 450ms;
+  --ease-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--base);
+  color: var(--ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Shell ---------- */
+.shell { display: flex; height: 100vh; overflow: hidden; }
+
+/* ---------- Rail ---------- */
+.rail {
+  width: 248px; min-width: 248px;
+  background: var(--nav-bg);
+  display: flex; flex-direction: column;
+  padding: var(--s-7) var(--s-5) var(--s-5);
+}
+.rail-brand {
+  font-family: var(--font-heading);
+  font-size: 24px; font-weight: 700;
+  color: oklch(0.92 0.01 210);
+  margin-bottom: var(--s-8);
+  letter-spacing: -0.5px;
+}
+.rail-nav { flex: 1; display: flex; flex-direction: column; gap: var(--s-1); }
+.rail-link {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--radius-md);
+  color: var(--nav-text); font-size: 14px; font-weight: 500;
+  text-decoration: none; cursor: pointer;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.rail-link:hover { background: oklch(0.24 0.018 210); color: oklch(0.88 0.01 210); }
+.rail-link.active { background: var(--nav-active); color: oklch(0.92 0.01 210); }
+.rail-link .ico { font-size: 18px; width: 24px; text-align: center; }
+.rail-divider { height: 1px; background: oklch(0.28 0.015 210); margin: var(--s-3) 0; }
+.rail-section {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: oklch(0.45 0.012 210);
+  padding: var(--s-3) var(--s-4) var(--s-1);
+}
+.rail-foot {
+  border-top: 1px solid oklch(0.28 0.015 210);
+  padding-top: var(--s-4);
+  display: flex; align-items: center; gap: var(--s-3);
+}
+.rail-avatar {
+  width: 36px; height: 36px; border-radius: var(--radius-full);
+  background: var(--kb);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; color: #fff;
+}
+.rail-user { flex: 1; }
+.rail-name { font-size: 13px; font-weight: 600; color: oklch(0.85 0.01 210); }
+.rail-role {
+  font-size: 11px; color: oklch(0.50 0.015 210);
+  background: oklch(0.25 0.015 210); padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+.rail-logout {
+  background: none; border: 1px solid oklch(0.35 0.015 210);
+  color: oklch(0.55 0.015 210); font-size: 14px; cursor: pointer;
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--dur-fast);
+}
+.rail-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ---------- Main ---------- */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--s-4) var(--s-7);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface); min-height: 60px;
+}
+.topbar-left { display: flex; align-items: center; gap: var(--s-4); }
+.topbar h1 {
+  font-family: var(--font-heading);
+  font-size: 22px; font-weight: 700; color: var(--ink);
+}
+.topbar .badge {
+  font-size: 11px; font-weight: 600; padding: 3px 10px;
+  border-radius: var(--radius-full); background: var(--kb-soft); color: var(--kb);
+}
+.topbar-right { display: flex; align-items: center; gap: var(--s-4); }
+.date-picker {
+  display: flex; align-items: center; gap: var(--s-2);
+  background: var(--base); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 6px 12px;
+  font-size: 13px; color: var(--ink-soft); cursor: pointer;
+  transition: border var(--dur-fast);
+}
+.date-picker:hover { border-color: var(--brand); }
+.refresh-btn {
+  width: 36px; height: 36px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--base);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; color: var(--ink-soft);
+  transition: all var(--dur-fast);
+}
+.refresh-btn:hover { border-color: var(--brand); color: var(--brand); }
+.stage {
+  flex: 1; overflow-y: auto; padding: var(--s-7);
+  scroll-behavior: smooth;
+}
+
+/* ---------- Stat Row ---------- */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--s-4);
+  margin-bottom: var(--s-6);
+}
+.stat {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: var(--s-5);
+  box-shadow: var(--shadow-xs);
+  display: flex; flex-direction: column;
+  gap: var(--s-2);
+  transition: transform var(--dur-fast) var(--ease-soft),
+              box-shadow var(--dur-fast) var(--ease-soft);
+  position: relative; overflow: hidden;
+}
+.stat::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.stat:nth-child(1)::before { background: var(--kb); }
+.stat:nth-child(2)::before { background: var(--success); }
+.stat:nth-child(3)::before { background: oklch(0.58 0.170 45); }
+.stat:nth-child(4)::before { background: var(--brand); }
+.stat:nth-child(5)::before { background: oklch(0.52 0.140 265); }
+.stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.stat-num {
+  font-family: var(--font-heading);
+  font-size: clamp(24px, 3.5vw, 32px);
+  font-weight: 700; color: var(--ink); line-height: 1.1;
+}
+.stat-num .unit { font-size: 0.45em; font-weight: 400; color: var(--ink-muted); margin-left: 2px; }
+.stat-lab { font-size: 12px; color: var(--ink-muted); font-weight: 500; }
+.stat-trend {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600;
+}
+.stat-trend.up { color: var(--success); }
+.stat-trend.down { color: var(--danger); }
+.stat-trend.flat { color: var(--ink-muted); }
+
+/* ---------- Chart Grid ---------- */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+.chart-grid-2 { grid-template-columns: 1fr 1fr; }
+.ch-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: var(--s-5);
+  box-shadow: var(--shadow-xs);
+}
+.ch-card h3 {
+  font-family: var(--font-heading);
+  font-size: clamp(17px, 2.2vw, 19px);
+  font-weight: 600; color: var(--ink);
+  margin-bottom: var(--s-3);
+}
+.ch-card .ch-wrap { width: 100%; }
+
+/* ---------- Mini Metrics ---------- */
+.mini-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.mini-metric {
+  background: var(--base);
+  border-radius: var(--radius-md);
+  padding: var(--s-3) var(--s-4);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.mini-metric .mm-val {
+  font-family: var(--font-heading); font-size: 22px;
+  font-weight: 700; color: var(--ink); line-height: 1.1;
+}
+.mini-metric .mm-lab { font-size: 11px; color: var(--ink-muted); font-weight: 500; }
+
+/* ---------- Table ---------- */
+.tbl-wrap {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+.tbl-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--border-light);
+}
+.tbl-head h3 {
+  font-family: var(--font-heading);
+  font-size: clamp(17px, 2.2vw, 19px);
+  font-weight: 600; color: var(--ink);
+}
+.tbl-head .view-all {
+  font-size: 12px; color: var(--brand); text-decoration: none; font-weight: 500;
+}
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  text-align: left; padding: var(--s-3) var(--s-5);
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--ink-muted);
+  background: var(--base-alt);
+  border-bottom: 1px solid var(--border-light);
+}
+.tbl td {
+  padding: var(--s-3) var(--s-5);
+  font-size: 13px; color: var(--ink-soft);
+  border-bottom: 1px solid var(--border-light);
+}
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--brand-pale); }
+.tbl .pill {
+  display: inline-block; padding: 2px 10px;
+  border-radius: var(--radius-full); font-size: 11px; font-weight: 600;
+}
+.pill-pass { background: var(--success-soft); color: var(--success); }
+.pill-reject { background: var(--danger-soft); color: var(--danger); }
+.pill-pending { background: var(--warning-soft); color: var(--warning); }
+
+/* ---------- Hot Search Tags ---------- */
+.hot-tags { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.hot-tag {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: var(--radius-full);
+  font-size: 12px; font-weight: 500;
+  background: var(--brand-soft); color: var(--brand-deep);
+}
+.hot-tag .cnt { font-size: 10px; color: var(--ink-muted); font-weight: 400; }
+
+/* ---------- Zero-result warning ---------- */
+.zero-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.zero-item {
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3); border-radius: var(--radius-sm);
+  background: var(--danger-soft); font-size: 12px; font-weight: 500; color: var(--danger);
+}
+.zero-item .z-count { font-family: var(--font-mono); font-size: 11px; opacity: 0.7; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- ── Sidebar ── -->
+<aside class="rail">
+  <div class="rail-brand">Serene</div>
+  <nav class="rail-nav">
+    <div class="rail-section">知识管理</div>
+    <a class="rail-link"><span class="ico">◈</span>知识审核</a>
+    <a class="rail-link"><span class="ico">▣</span>知识库</a>
+    <a class="rail-link active"><span class="ico">◆</span>数据洞察</a>
+  </nav>
+  <div class="rail-foot">
+    <div class="rail-avatar">李</div>
+    <div class="rail-user">
+      <div class="rail-name">李思远</div>
+      <span class="rail-role">知识库管理员</span>
+    </div>
+    <button class="rail-logout" title="退出登录">⏻</button>
+  </div>
+</aside>
+
+<!-- ── Main Content ── -->
+<main class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <h1>知识数据洞察</h1>
+      <span class="badge">知识库管理员·个人绩效</span>
+    </div>
+    <div class="topbar-right">
+      <div class="date-picker">📅 2026-05-25 — 2026-06-01</div>
+      <button class="refresh-btn" title="刷新">↻</button>
+    </div>
+  </header>
+
+  <div class="stage">
+
+    <!-- Row 1: Personal Review Stats -->
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-num">18<span class="unit">篇</span></div>
+        <div class="stat-lab">今日审核文档</div>
+        <div class="stat-trend up">↑ 5 篇 较昨日</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">92.6<span class="unit">%</span></div>
+        <div class="stat-lab">审核通过率</div>
+        <div class="stat-trend up">↑ 1.2% 较上周</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">7<span class="unit">篇</span></div>
+        <div class="stat-lab">待审核积压</div>
+        <div class="stat-trend down">↓ 3 篇 较昨日</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">3.2<span class="unit">min</span></div>
+        <div class="stat-lab">平均审核耗时</div>
+        <div class="stat-trend down">↓ 0.5min 较上周</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">486<span class="unit">篇</span></div>
+        <div class="stat-lab">本月审核总量</div>
+        <div class="stat-trend flat">→ 符合目标</div>
+      </div>
+    </div>
+
+    <!-- Row 2: Review Trend + Knowledge Base Health -->
+    <div class="chart-grid">
+      <div class="ch-card">
+        <h3>近 7 天审核量趋势</h3>
+        <div id="chart-review" class="ch-wrap" style="height:300px;"></div>
+      </div>
+      <div class="ch-card">
+        <h3>知识库健康度</h3>
+        <div class="mini-metrics" style="margin-bottom:var(--s-4)">
+          <div class="mini-metric">
+            <div class="mm-val">1,284</div>
+            <div class="mm-lab">文档总数</div>
+          </div>
+          <div class="mini-metric">
+            <div class="mm-val">78.5%</div>
+            <div class="mm-lab">知识命中率</div>
+          </div>
+          <div class="mini-metric">
+            <div class="mm-val">956</div>
+            <div class="mm-lab">已发布</div>
+          </div>
+          <div class="mini-metric">
+            <div class="mm-val">2,340</div>
+            <div class="mm-lab">近7天搜索量</div>
+          </div>
+        </div>
+        <div id="chart-kb-health" class="ch-wrap" style="height:200px;"></div>
+      </div>
+    </div>
+
+    <!-- Row 3: Document Status + Knowledge Effect -->
+    <div class="chart-grid chart-grid-2">
+      <div class="ch-card">
+        <h3>文档状态分布</h3>
+        <div id="chart-doc-status" class="ch-wrap" style="height:280px;"></div>
+      </div>
+      <div class="ch-card">
+        <h3>知识库效能洞察</h3>
+        <div id="chart-kb-effect" class="ch-wrap" style="height:280px;"></div>
+      </div>
+    </div>
+
+    <!-- Row 4: Hot Search + Zero Result -->
+    <div class="chart-grid chart-grid-2">
+      <div class="ch-card">
+        <h3>本周热门搜索词</h3>
+        <div class="hot-tags">
+          <span class="hot-tag">退款流程 <span class="cnt">×86</span></span>
+          <span class="hot-tag">物流查询 <span class="cnt">×74</span></span>
+          <span class="hot-tag">会员权益 <span class="cnt">×68</span></span>
+          <span class="hot-tag">优惠券使用 <span class="cnt">×59</span></span>
+          <span class="hot-tag">售后政策 <span class="cnt">×52</span></span>
+          <span class="hot-tag">订单取消 <span class="cnt">×48</span></span>
+          <span class="hot-tag">发票开具 <span class="cnt">×43</span></span>
+          <span class="hot-tag">换货流程 <span class="cnt">×37</span></span>
+          <span class="hot-tag">账号注销 <span class="cnt">×31</span></span>
+          <span class="hot-tag">密码找回 <span class="cnt">×28</span></span>
+        </div>
+      </div>
+      <div class="ch-card">
+        <h3>⚠ 零结果搜索 · 待补充</h3>
+        <div class="zero-list">
+          <div class="zero-item">
+            <span>🔍 跨境物流时效</span>
+            <span class="z-count">×12</span>
+          </div>
+          <div class="zero-item">
+            <span>🔍 品牌授权查询</span>
+            <span class="z-count">×9</span>
+          </div>
+          <div class="zero-item">
+            <span>🔍 VIP专属客服</span>
+            <span class="z-count">×7</span>
+          </div>
+          <div class="zero-item">
+            <span>🔍 分期付款</span>
+            <span class="z-count">×5</span>
+          </div>
+          <div class="zero-item">
+            <span>🔍 礼品卡兑换</span>
+            <span class="z-count">×4</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 5: Recent Review Records -->
+    <div class="tbl-wrap" style="margin-top:var(--s-4)">
+      <div class="tbl-head">
+        <h3>最近审核记录</h3>
+        <a class="view-all" href="#">查看全部 →</a>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>文档名称</th><th>上传时间</th><th>审核时间</th>
+            <th>审核耗时</th><th>OCR 置信度</th><th>结果</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>售后服务政策_V3.2.pdf</td><td>09:45</td><td>09:47</td><td>2min</td>
+            <td>98.2%</td>
+            <td><span class="pill pill-pass">通过</span></td>
+          </tr>
+          <tr>
+            <td>会员等级说明_2026Q2.docx</td><td>09:30</td><td>09:34</td><td>4min</td>
+            <td>95.1%</td>
+            <td><span class="pill pill-pass">通过</span></td>
+          </tr>
+          <tr>
+            <td>退换货流程图_v2.png</td><td>09:15</td><td>09:18</td><td>3min</td>
+            <td>82.4%</td>
+            <td><span class="pill pill-reject">驳回</span></td>
+          </tr>
+          <tr>
+            <td>新员工培训手册_2026.pdf</td><td>09:02</td><td>—</td><td>—</td>
+            <td>—</td>
+            <td><span class="pill pill-pending">待审</span></td>
+          </tr>
+          <tr>
+            <td>客服话术模板库.xlsx</td><td>08:50</td><td>08:52</td><td>1min</td>
+            <td>99.4%</td>
+            <td><span class="pill pill-pass">通过</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /stage -->
+</main><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ECharts -->
+<script>
+(function() {
+  var chartReview = echarts.init(document.getElementById('chart-review'));
+  chartReview.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0, textStyle: { fontSize: 11, color: '#7b8c9a' }, itemWidth: 12, itemHeight: 12 },
+    grid: { left: 10, right: 20, top: 10, bottom: 30, containLabel: true },
+    xAxis: {
+      type: 'category', data: ['05-26','05-27','05-28','05-29','05-30','05-31','06-01'],
+      axisLine: { lineStyle: { color: '#dde4e8' } },
+      axisLabel: { color: '#7b8c9a', fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value', minInterval: 5,
+      splitLine: { lineStyle: { color: '#edf1f4' } },
+      axisLabel: { color: '#7b8c9a', fontSize: 11 }
+    },
+    series: [
+      {
+        name: '通过', type: 'bar', barWidth: 14, stack:'total',
+        itemStyle: { color: 'oklch(0.50 0.150 150)', borderRadius: [0,0,0,0] },
+        data: [14, 16, 11, 19, 21, 17, 16]
+      },
+      {
+        name: '驳回', type: 'bar', barWidth: 14, stack:'total',
+        itemStyle: { color: 'oklch(0.50 0.170 20)', borderRadius: [6,6,0,0] },
+        data: [2, 1, 3, 2, 1, 2, 2]
+      }
+    ]
+  });
+
+  var chartKbHealth = echarts.init(document.getElementById('chart-kb-health'));
+  chartKbHealth.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 10, right: 20, top: 10, bottom: 10, containLabel: true },
+    xAxis: {
+      type: 'category', data: ['05-26','05-27','05-28','05-29','05-30','05-31','06-01'],
+      axisLabel: { color: '#7b8c9a', fontSize: 10 }
+    },
+    yAxis: {
+      type: 'value', max: 100,
+      splitLine: { lineStyle: { color: '#edf1f4' } },
+      axisLabel: { color: '#7b8c9a', fontSize: 10, formatter: '{value}%' }
+    },
+    series: [{
+      type: 'line', smooth: true, symbol: 'circle', symbolSize: 6,
+      lineStyle: { color: 'oklch(0.50 0.155 240)', width: 2.5 },
+      itemStyle: { color: 'oklch(0.50 0.155 240)' },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
+        { offset: 0, color: 'oklch(0.50 0.155 240 / 0.25)' },
+        { offset: 1, color: 'oklch(0.50 0.155 240 / 0.02)' }
+      ])},
+      data: [75.2, 76.1, 74.8, 77.3, 78.0, 78.2, 78.5]
+    }]
+  });
+
+  var chartDocStatus = echarts.init(document.getElementById('chart-doc-status'));
+  chartDocStatus.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} 篇 ({d}%)' },
+    series: [{
+      type: 'pie', radius: ['45%', '72%'], center: ['50%', '52%'],
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 3 },
+      label: { show: true, formatter: '{b}\n{d}%', fontSize: 11, color: '#3a4f5f' },
+      emphasis: { scaleSize: 8 },
+      data: [
+        { value: 956, name: '已发布', itemStyle: { color: 'oklch(0.50 0.155 240)' } },
+        { value: 198, name: '待审核', itemStyle: { color: 'oklch(0.62 0.140 75)' } },
+        { value: 87, name: '已驳回', itemStyle: { color: 'oklch(0.50 0.170 20)' } },
+        { value: 43, name: '已归档', itemStyle: { color: 'oklch(0.55 0.04 210)' } }
+      ]
+    }]
+  });
+
+  var chartKbEffect = echarts.init(document.getElementById('chart-kb-effect'));
+  chartKbEffect.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0, textStyle: { fontSize: 11, color: '#7b8c9a' }, itemWidth: 12, itemHeight: 12 },
+    grid: { left: 10, right: 20, top: 10, bottom: 30, containLabel: true },
+    xAxis: {
+      type: 'category', data: ['05-26','05-27','05-28','05-29','05-30','05-31','06-01'],
+      axisLine: { lineStyle: { color: '#dde4e8' } },
+      axisLabel: { color: '#7b8c9a', fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#edf1f4' } },
+      axisLabel: { color: '#7b8c9a', fontSize: 11 }
+    },
+    series: [
+      {
+        name: '搜索次数', type: 'bar', barWidth: 16,
+        itemStyle: { borderRadius: [6,6,0,0], color: 'oklch(0.52 0.135 175)' },
+        data: [310, 342, 295, 368, 402, 385, 340]
+      },
+      {
+        name: '命中次数', type: 'bar', barWidth: 16,
+        itemStyle: { borderRadius: [6,6,0,0], color: 'oklch(0.50 0.155 240)' },
+        data: [233, 260, 220, 284, 314, 301, 267]
+      }
+    ]
+  });
+
+  window.addEventListener('resize', function() {
+    chartReview.resize(); chartKbHealth.resize();
+    chartDocStatus.resize(); chartKbEffect.resize();
+  });
+})();
+</script>
+</body>
+</html>

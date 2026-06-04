@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.ChatMessageMapper">
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.ChatMessage">
+        <id column="id" property="id" />
+        <result column="session_id" property="sessionId" />
+        <result column="sender_type" property="senderType" />
+        <result column="sender_id" property="senderId" />
+        <result column="content" property="content" />
+        <result column="message_seq" property="messageSeq" />
+        <result column="satisfaction" property="satisfaction" />
+        <result column="create_time" property="createTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">id, session_id, sender_type, sender_id, content, message_seq, satisfaction, create_time</sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_messages (session_id, sender_type, sender_id, content, message_seq)
+        VALUES (#{sessionId}, #{senderType}, #{senderId}, #{content}, #{messageSeq})
+    </insert>
+
+    <select id="findBySessionIdOrderByMessageSeqAsc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM chat_messages
+        WHERE session_id = #{sessionId} ORDER BY message_seq ASC
+    </select>
+
+    <select id="selectMaxMessageSeqBySessionId" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(message_seq), 0) FROM chat_messages WHERE session_id = #{sessionId}
+    </select>
+
+    <select id="countDistinctSessionsByAgentAndDate" resultType="long">
+        SELECT COUNT(DISTINCT session_id) FROM chat_messages
+        WHERE sender_type = 'AGENT' AND sender_id = #{agentId}
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="avgFirstResponseSecondsByAgentAndDate" resultType="java.lang.Double">
+        SELECT AVG(GREATEST(0, TIMESTAMPDIFF(SECOND, first_user_msg, first_agent_msg))) FROM (
+            SELECT a.session_id,
+                (SELECT MIN(create_time) FROM chat_messages WHERE session_id = a.session_id AND sender_type = 'USER') AS first_user_msg,
+                a.first_agent_msg
+            FROM (
+                SELECT session_id, MIN(create_time) AS first_agent_msg
+                FROM chat_messages WHERE sender_type = 'AGENT' AND sender_id = #{agentId}
+                AND create_time BETWEEN #{start} AND #{end}
+                GROUP BY session_id
+            ) a
+        ) t WHERE t.first_user_msg IS NOT NULL
+    </select>
+
+    <select id="avgFirstResponseSecondsByDate" resultType="java.lang.Double">
+        SELECT AVG(TIMESTAMPDIFF(SECOND, first_user_msg, first_agent_msg)) FROM (
+            SELECT a.session_id,
+                (SELECT MIN(create_time) FROM chat_messages WHERE session_id = a.session_id AND sender_type = 'USER') AS first_user_msg,
+                a.first_agent_msg
+            FROM (
+                SELECT session_id, MIN(create_time) AS first_agent_msg
+                FROM chat_messages WHERE sender_type = 'AGENT'
+                AND create_time BETWEEN #{start} AND #{end}
+                GROUP BY session_id
+            ) a
+        ) t WHERE t.first_user_msg IS NOT NULL
+    </select>
+
+    <select id="countAgentChatTrendByDate" resultType="java.util.Map">
+        SELECT DATE(create_time) AS statDate, COUNT(DISTINCT session_id) AS totalCount
+        FROM chat_messages WHERE sender_type = 'AGENT' AND sender_id = #{agentId}
+        AND create_time BETWEEN #{start} AND #{end}
+        GROUP BY DATE(create_time) ORDER BY statDate
+    </select>
+
+    <select id="countSlaCompliantSessions" resultType="long">
+        SELECT COUNT(*) FROM (
+            SELECT a.session_id,
+                TIMESTAMPDIFF(SECOND,
+                    (SELECT MIN(create_time) FROM chat_messages WHERE session_id = a.session_id AND sender_type = 'USER'),
+                    a.first_agent_msg
+                ) AS response_seconds
+            FROM (
+                SELECT session_id, MIN(create_time) AS first_agent_msg
+                FROM chat_messages WHERE sender_type = 'AGENT' AND sender_id = #{agentId}
+                AND create_time BETWEEN #{start} AND #{end}
+                GROUP BY session_id
+            ) a
+        ) t WHERE t.response_seconds IS NOT NULL AND t.response_seconds &lt;= #{slaThresholdSeconds}
+    </select>
+
+    <!-- 更新会话最后一条 AGENT 消息的评价 -->
+    <update id="updateSatisfactionOnLatestAgentMsg">
+        UPDATE chat_messages SET satisfaction = #{satisfaction}
+        WHERE session_id = #{sessionId}
+        AND sender_type = 'AGENT'
+        AND message_seq = (
+            SELECT max_seq FROM (
+                SELECT MAX(message_seq) AS max_seq FROM chat_messages
+                WHERE session_id = #{sessionId} AND sender_type = 'AGENT'
+            ) t
+        )
+        LIMIT 1
+    </update>
+
+    <!-- 按客服统计满意度分布（从 chat_messages 取） -->
+    <select id="countSatisfactionByAgent" resultType="java.util.Map">
+        SELECT satisfaction AS satisfactionLevel, COUNT(DISTINCT session_id) AS totalCount
+        FROM chat_messages
+        WHERE sender_type = 'AGENT' AND sender_id = #{agentId}
+        AND satisfaction IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+        GROUP BY satisfaction
+        ORDER BY satisfaction DESC
+    </select>
+
+    <!-- 客服平均满意度（从 chat_messages 取） -->
+    <select id="avgSatisfactionByAgent" resultType="java.lang.Double">
+        SELECT AVG(satisfaction) FROM chat_messages
+        WHERE sender_type = 'AGENT' AND sender_id = #{agentId}
+        AND satisfaction IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+
+    <!-- 全局平均满意度（不按客服筛选，用于团队平均） -->
+    <select id="avgSatisfactionByDate" resultType="java.lang.Double">
+        SELECT AVG(satisfaction) FROM chat_messages
+        WHERE sender_type = 'AGENT'
+        AND satisfaction IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+</mapper>

@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.WorkOrderMapper">
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.WorkOrder">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="title" property="title" />
+        <result column="description" property="description" />
+        <result column="type" property="type" />
+        <result column="priority" property="priority" />
+        <result column="status" property="status" />
+        <result column="handler_id" property="handlerId" />
+        <result column="user_phone" property="userPhone" />
+        <result column="user_nickname" property="userNickname" />
+        <result column="result" property="result" />
+        <result column="tags" property="tags" />
+        <result column="summary" property="summary" />
+        <result column="session_id" property="sessionId" />
+        <result column="matching_skill" property="matchingSkill" />
+        <result column="dispatch_confidence" property="dispatchConfidence" />
+        <result column="biz_tag" property="bizTag" />
+        <result column="emotion_level" property="emotionLevel" />
+        <result column="sla_deadline" property="slaDeadline" />
+        <result column="response_deadline" property="responseDeadline" />
+        <result column="responded_at" property="respondedAt" />
+        <result column="sla_paused" property="slaPaused" />
+        <result column="effective_response_seconds" property="effectiveResponseSeconds" />
+        <result column="effective_resolution_seconds" property="effectiveResolutionSeconds" />
+        <result column="first_responder_id" property="firstResponderId" />
+        <result column="resolver_id" property="resolverId" />
+        <result column="exclude_from_sla" property="excludeFromSla" />
+        <result column="rating" property="rating" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+    <sql id="Base_Column_List">id, user_id, title, description, type, priority, status, handler_id, user_phone, user_nickname, result, tags, summary, session_id, matching_skill, dispatch_confidence, biz_tag, emotion_level, sla_deadline, response_deadline, responded_at, sla_paused, effective_response_seconds, effective_resolution_seconds, first_responder_id, resolver_id, exclude_from_sla, rating, create_time, update_time</sql>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO work_orders (user_id, title, description, type, priority, status, handler_id, user_phone, user_nickname, result, tags, summary, session_id, matching_skill, dispatch_confidence, biz_tag, emotion_level, sla_deadline, response_deadline, responded_at, sla_paused, effective_response_seconds, effective_resolution_seconds, first_responder_id, resolver_id, exclude_from_sla, rating, create_time, update_time)
+        VALUES (#{userId}, #{title}, #{description}, #{type}, #{priority}, #{status}, #{handlerId}, #{userPhone}, #{userNickname}, #{result}, #{tags}, #{summary}, #{sessionId}, #{matchingSkill}, #{dispatchConfidence}, #{bizTag}, #{emotionLevel}, #{slaDeadline}, #{responseDeadline}, #{respondedAt}, 0, null, null, null, null, 0, #{rating}, NOW(), NOW())
+    </insert>
+    <update id="update">
+        UPDATE work_orders
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="priority != null">priority = #{priority},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="handlerId != null">handler_id = #{handlerId},</if>
+            <if test="result != null">result = #{result},</if>
+            <if test="tags != null">tags = #{tags},</if>
+            <if test="summary != null">summary = #{summary},</if>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="matchingSkill != null">matching_skill = #{matchingSkill},</if>
+            <if test="dispatchConfidence != null">dispatch_confidence = #{dispatchConfidence},</if>
+            <if test="bizTag != null">biz_tag = #{bizTag},</if>
+            <if test="emotionLevel != null">emotion_level = #{emotionLevel},</if>
+            <if test="slaDeadline != null">sla_deadline = #{slaDeadline},</if>
+            <if test="responseDeadline != null">response_deadline = #{responseDeadline},</if>
+            <if test="respondedAt != null">responded_at = #{respondedAt},</if>
+            <if test="slaPaused != null">sla_paused = #{slaPaused},</if>
+            <if test="effectiveResponseSeconds != null">effective_response_seconds = #{effectiveResponseSeconds},</if>
+            <if test="effectiveResolutionSeconds != null">effective_resolution_seconds = #{effectiveResolutionSeconds},</if>
+            <if test="firstResponderId != null">first_responder_id = #{firstResponderId},</if>
+            <if test="resolverId != null">resolver_id = #{resolverId},</if>
+            <if test="excludeFromSla != null">exclude_from_sla = #{excludeFromSla},</if>
+            <if test="rating != null">rating = #{rating},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+    <delete id="deleteById">DELETE FROM work_orders WHERE id = #{id}</delete>
+    <select id="selectById" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE id = #{id}</select>
+    <select id="selectAll" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time DESC</select>
+    <select id="selectAllPaginated" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time DESC LIMIT #{limit} OFFSET #{offset}</select>
+    <select id="countAll" resultType="int">SELECT COUNT(*) FROM work_orders</select>
+    <select id="findBySessionId" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE session_id = #{sessionId} ORDER BY create_time ASC</select>
+    <select id="countActiveBySessionId" resultType="int">SELECT COUNT(*) FROM work_orders WHERE session_id = #{sessionId} AND status IN (#{pendingStatus}, #{processingStatus})</select>
+    <select id="findByUserId" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE user_id = #{userId}</select>
+    <select id="findByStatus" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE status = #{status}</select>
+    <select id="findByHandlerId" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE handler_id = #{handlerId}</select>
+    <select id="findUnassigned" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE handler_id IS NULL AND status = #{pendingStatus} ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time ASC</select>
+    <select id="countActiveByHandlerId" resultType="int">SELECT COUNT(*) FROM work_orders WHERE handler_id = #{handlerId} AND status IN (#{pendingStatus}, #{processingStatus})</select>
+    <update id="claimWorkOrder">UPDATE work_orders SET handler_id = #{handlerId}, status = #{processingStatus}, update_time = NOW() WHERE id = #{id} AND handler_id IS NULL AND status = #{pendingStatus}</update>
+    <select id="countByStatusBetween" resultType="java.util.Map">
+        SELECT status AS statusKey, COUNT(*) AS totalCount FROM work_orders WHERE create_time BETWEEN #{start} AND #{end} GROUP BY status
+    </select>
+    <select id="countWorkOrderTrendByDate" resultType="java.util.Map">
+        SELECT DATE(create_time) AS statDate, COUNT(*) AS totalCount FROM work_orders WHERE create_time BETWEEN #{start} AND #{end} GROUP BY DATE(create_time) ORDER BY statDate
+    </select>
+
+    <!-- SLA 绩效查询 (Task 9) -->
+    <select id="countResponseCompliantByAgent" resultType="int">
+        SELECT COUNT(*) FROM work_orders
+        WHERE first_responder_id = #{agentId}
+        AND exclude_from_sla = 0
+        AND responded_at IS NOT NULL
+        AND response_deadline IS NOT NULL
+        AND responded_at &lt;= response_deadline
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="countResponseBreachedByAgent" resultType="int">
+        SELECT COUNT(*) FROM work_orders
+        WHERE first_responder_id = #{agentId}
+        AND exclude_from_sla = 0
+        AND response_deadline IS NOT NULL
+        AND (responded_at IS NULL OR responded_at &gt; response_deadline)
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="countResolutionCompliantByAgent" resultType="int">
+        SELECT COUNT(*) FROM work_orders
+        WHERE resolver_id = #{agentId}
+        AND exclude_from_sla = 0
+        AND status = 'completed'
+        AND sla_deadline IS NOT NULL
+        AND update_time &lt;= sla_deadline
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="countResolutionBreachedByAgent" resultType="int">
+        SELECT COUNT(*) FROM work_orders
+        WHERE resolver_id = #{agentId}
+        AND exclude_from_sla = 0
+        AND status IN ('completed', 'cancelled')
+        AND sla_deadline IS NOT NULL
+        AND update_time &gt; sla_deadline
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="avgEffectiveResponseByAgent" resultType="double">
+        SELECT AVG(effective_response_seconds) FROM work_orders
+        WHERE first_responder_id = #{agentId}
+        AND exclude_from_sla = 0
+        AND effective_response_seconds IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="avgEffectiveResolutionByAgent" resultType="double">
+        SELECT AVG(effective_resolution_seconds) FROM work_orders
+        WHERE resolver_id = #{agentId}
+        AND exclude_from_sla = 0
+        AND effective_resolution_seconds IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="avgEffectiveResponseByDate" resultType="double">
+        SELECT AVG(effective_response_seconds) FROM work_orders
+        WHERE exclude_from_sla = 0
+        AND effective_response_seconds IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="avgEffectiveResolutionByDate" resultType="double">
+        SELECT AVG(effective_resolution_seconds) FROM work_orders
+        WHERE exclude_from_sla = 0
+        AND effective_resolution_seconds IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="countTotalSlaWorkOrdersByAgent" resultType="int">
+        SELECT COUNT(*) FROM work_orders
+        WHERE ((first_responder_id = #{agentId}) OR (resolver_id = #{agentId}))
+        AND exclude_from_sla = 0
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="countSlaTrendByDate" resultType="java.util.Map">
+        SELECT DATE(create_time) AS statDate,
+               SUM(CASE WHEN (first_responder_id = #{agentId} AND responded_at IS NOT NULL AND responded_at &lt;= response_deadline)
+                        OR (resolver_id = #{agentId} AND status = 'completed' AND update_time &lt;= sla_deadline)
+                        THEN 1 ELSE 0 END) AS slaCompliant,
+               COUNT(*) AS totalCount
+        FROM work_orders
+        WHERE exclude_from_sla = 0
+        AND (first_responder_id = #{agentId} OR resolver_id = #{agentId})
+        AND create_time BETWEEN #{start} AND #{end}
+        GROUP BY DATE(create_time)
+        ORDER BY statDate
+    </select>
+    <select id="countSlaOverview" resultType="java.util.Map">
+        SELECT
+            COUNT(*) AS totalWorkOrders,
+            SUM(CASE WHEN responded_at IS NOT NULL AND responded_at &lt;= response_deadline THEN 1 ELSE 0 END) AS responseCompliant,
+            SUM(CASE WHEN status = 'completed' AND update_time &lt;= sla_deadline THEN 1 ELSE 0 END) AS resolutionCompliant,
+            SUM(CASE WHEN (responded_at IS NULL OR responded_at &gt; response_deadline) AND response_deadline IS NOT NULL THEN 1 ELSE 0 END) AS responseBreached,
+            SUM(CASE WHEN status IN ('completed','cancelled') AND update_time &gt; sla_deadline THEN 1 ELSE 0 END) AS resolutionBreached
+        FROM work_orders
+        WHERE exclude_from_sla = 0
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+    <select id="countSlaAgentRanking" resultType="java.util.Map">
+        SELECT
+            COALESCE(first_responder_id, resolver_id) AS agentId,
+            COUNT(*) AS totalWorkOrders,
+            SUM(CASE WHEN (first_responder_id IS NOT NULL AND responded_at IS NOT NULL AND responded_at &lt;= response_deadline)
+                      OR (resolver_id IS NOT NULL AND status = 'completed' AND update_time &lt;= sla_deadline)
+                      THEN 1 ELSE 0 END) AS slaCompliant
+        FROM work_orders
+        WHERE exclude_from_sla = 0
+        AND create_time BETWEEN #{start} AND #{end}
+        AND (first_responder_id IS NOT NULL OR resolver_id IS NOT NULL)
+        GROUP BY COALESCE(first_responder_id, resolver_id)
+        ORDER BY slaCompliant DESC, totalWorkOrders DESC
+    </select>
+    <select id="countSlaTrendByBizTag" resultType="java.util.Map">
+        SELECT
+            DATE(create_time) AS statDate,
+            biz_tag AS bizTag,
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN responded_at IS NOT NULL AND responded_at &lt;= response_deadline THEN 1 ELSE 0 END) AS responseCompliant,
+            SUM(CASE WHEN status = 'completed' AND update_time &lt;= sla_deadline THEN 1 ELSE 0 END) AS resolutionCompliant
+        FROM work_orders
+        WHERE exclude_from_sla = 0
+        AND biz_tag IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+        GROUP BY DATE(create_time), biz_tag
+        ORDER BY statDate, bizTag
+    </select>
+
+    <!-- 客服工单统计 -->
+    <select id="countWorkOrdersByAgent" resultType="java.util.Map">
+        SELECT
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completedCount,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pendingCount,
+            SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processingCount,
+            SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelledCount
+        FROM work_orders
+        WHERE handler_id = #{agentId}
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
+
+    <!-- 按客服统计工单满意度分布 -->
+    <select id="countWorkOrderRatingByAgent" resultType="java.util.Map">
+        SELECT
+            rating AS ratingLevel,
+            COUNT(*) AS totalCount
+        FROM work_orders
+        WHERE handler_id = #{agentId}
+        AND rating IS NOT NULL
+        AND create_time BETWEEN #{start} AND #{end}
+        <if test="workOrderType != null and workOrderType != '' and workOrderType != 'all'">
+            AND type = #{workOrderType}
+        </if>
+        GROUP BY rating
+        ORDER BY rating DESC
+    </select>
+</mapper>

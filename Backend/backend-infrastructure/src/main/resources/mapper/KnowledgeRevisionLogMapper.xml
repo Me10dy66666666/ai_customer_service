@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.KnowledgeRevisionLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.KnowledgeRevisionLogEntity">
+        <id column="id" property="id"/>
+        <result column="document_id" property="documentId"/>
+        <result column="change_type" property="changeType"/>
+        <result column="changed_fields" property="changedFields"/>
+        <result column="old_value" property="oldValue"/>
+        <result column="new_value" property="newValue"/>
+        <result column="changed_by" property="changedBy"/>
+        <result column="changed_at" property="changedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, document_id, change_type, changed_fields, old_value, new_value, changed_by, changed_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO knowledge_revision_log (document_id, change_type, changed_fields,
+            old_value, new_value, changed_by, changed_at)
+        VALUES (#{documentId}, #{changeType}, #{changedFields},
+            #{oldValue}, #{newValue}, #{changedBy}, NOW())
+    </insert>
+
+    <select id="findByDocumentIdOrderByChangedAtDesc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_revision_log
+        WHERE document_id = #{documentId}
+        ORDER BY changed_at DESC
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_revision_log WHERE id = #{id} LIMIT 1
+    </select>
+
+    <delete id="deleteByDocumentId">
+        DELETE FROM knowledge_revision_log WHERE document_id = #{documentId}
+    </delete>
+</mapper>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.SlaPauseLogMapper">
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.SlaPauseLog">
+        <id column="id" property="id"/>
+        <result column="work_order_id" property="workOrderId"/>
+        <result column="pause_reason" property="pauseReason"/>
+        <result column="resume_reason" property="resumeReason"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="pause_time" property="pauseTime"/>
+        <result column="resume_time" property="resumeTime"/>
+        <result column="paused_effective_seconds" property="pausedEffectiveSeconds"/>
+        <result column="original_response_deadline" property="originalResponseDeadline"/>
+        <result column="original_sla_deadline" property="originalSlaDeadline"/>
+        <result column="resume_response_deadline" property="resumeResponseDeadline"/>
+        <result column="resume_sla_deadline" property="resumeSlaDeadline"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sla_pause_log (work_order_id, pause_reason, operator_id, pause_time, original_response_deadline, original_sla_deadline)
+        VALUES (#{workOrderId}, #{pauseReason}, #{operatorId}, #{pauseTime}, #{originalResponseDeadline}, #{originalSlaDeadline})
+    </insert>
+    <select id="findActiveByWorkOrderId" resultMap="BaseResultMap">SELECT * FROM sla_pause_log WHERE work_order_id = #{workOrderId} AND resume_time IS NULL</select>
+    <select id="findLatestByWorkOrderId" resultMap="BaseResultMap">SELECT * FROM sla_pause_log WHERE work_order_id = #{workOrderId} ORDER BY pause_time DESC LIMIT 1</select>
+    <update id="updateResume">
+        UPDATE sla_pause_log SET resume_reason=#{resumeReason}, operator_id=#{operatorId},
+        resume_time=NOW(), paused_effective_seconds=#{pausedEffectiveSeconds},
+        resume_response_deadline=#{resumeResponseDeadline}, resume_sla_deadline=#{resumeSlaDeadline}
+        WHERE id=#{id}
+    </update>
+</mapper>

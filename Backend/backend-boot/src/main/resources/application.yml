@@ -1,0 +1,122 @@
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+      enabled: true
+  application:
+    name: ai-customer-service-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ai_customer_service?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&tinyInt1isBit=false}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:10000}
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  cache:
+    type: redis
+    redis:
+      time-to-live: 86400000
+      cache-null-values: false
+      key-prefix: "ai_service:"
+      use-key-prefix: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 4
+        prefetch: 10
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000ms
+        max-attempts: 3
+        multiplier: 2
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://127.0.0.1:9200}
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.backend.infrastructure.persistence.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+server:
+  port: 8081
+
+dify:
+  base-url: ${DIFY_BASE_URL:https://api.dify.ai/v1}
+  knowledge:
+    key: ${DIFY_KNOWLEDGE_KEY}
+    dataset-id: ${DIFY_DATASET_ID}
+  chat:
+    key: ${DIFY_CHAT_KEY}
+    timeout: 120000
+  intervention:
+    api-key: ${DIFY_INTERVENTION_KEY}
+    workflow: /workflows/run
+  workorder:
+    api-key: ${DIFY_WORKORDER_KEY}
+    workflow: /workflows/run
+
+app:
+  cache:
+    redis:
+      user-profile-ttl-seconds: ${USER_PROFILE_CACHE_TTL_SECONDS:21600}
+      user-permissions-ttl-seconds: ${USER_PERMISSIONS_CACHE_TTL_SECONDS:21600}
+      session-ttl-seconds: ${USER_SESSION_CACHE_TTL_SECONDS:86400}
+
+ocr:
+  engine: ${OCR_ENGINE:aliyun}
+  confidence-threshold: 0.85
+  timeout-ms: 10000
+  max-concurrency: 4
+  default-language: zh-CN
+  languages: [zh-CN, en-US]
+  aliyun:
+    access-key-id: ${OCR_ALIYUN_ACCESS_KEY_ID}
+    access-key-secret: ${OCR_ALIYUN_ACCESS_KEY_SECRET}
+    endpoint: ocr-api.cn-hangzhou.aliyuncs.com
+    region: cn-hangzhou
+    api:
+      recognize-advanced: RecognizeAdvanced
+      table: RecognizeTable
+      document-structure: RecognizeDocumentStructure
+
+knowledge:
+  document:
+    expire-policy:
+      enabled: true
+      default-ttl-days: 365
+      archive-grace-days: 30
+      auto-archive-cron: "0 0 3 * * ?"
+  search:
+    engine: ${KNOWLEDGE_SEARCH_ENGINE:elasticsearch}
+
+document:
+  preview:
+    libreoffice:
+      mode: ${DOCUMENT_PREVIEW_LIBREOFFICE_MODE:docker_exec}
+      docker:
+        container-name: ${DOCUMENT_PREVIEW_DOCKER_CONTAINER:ai-customer-service-libreoffice}
+        container-uploads-dir: ${DOCUMENT_PREVIEW_CONTAINER_UPLOADS:/app/uploads}
+
+upload:
+  chunk:
+    size: 5242880
+    temp-dir: ./uploads/chunks
+    expire-hours: 24

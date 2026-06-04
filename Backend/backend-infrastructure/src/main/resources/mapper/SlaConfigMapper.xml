@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.SlaConfigMapper">
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.SlaConfig">
+        <id column="id" property="id"/>
+        <result column="biz_tag" property="bizTag"/>
+        <result column="priority" property="priority"/>
+        <result column="response_minutes" property="responseMinutes"/>
+        <result column="resolution_minutes" property="resolutionMinutes"/>
+        <result column="escalation_minutes" property="escalationMinutes"/>
+        <result column="emergency_threshold" property="emergencyThreshold"/>
+        <result column="calendar_id" property="calendarId"/>
+        <result column="is_active" property="isActive"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+    <select id="findAllActive" resultMap="BaseResultMap">SELECT * FROM sla_config WHERE is_active = 1</select>
+    <select id="findByBizTagAndPriority" resultMap="BaseResultMap">SELECT * FROM sla_config WHERE biz_tag = #{bizTag} AND priority = #{priority} AND is_active = 1 LIMIT 1</select>
+    <select id="selectById" resultMap="BaseResultMap">SELECT * FROM sla_config WHERE id = #{id}</select>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sla_config (biz_tag, priority, response_minutes, resolution_minutes, escalation_minutes, emergency_threshold, calendar_id)
+        VALUES (#{bizTag}, #{priority}, #{responseMinutes}, #{resolutionMinutes}, #{escalationMinutes}, #{emergencyThreshold}, #{calendarId})
+    </insert>
+    <update id="update">
+        UPDATE sla_config SET biz_tag=#{bizTag}, priority=#{priority},
+        response_minutes=#{responseMinutes}, resolution_minutes=#{resolutionMinutes},
+        escalation_minutes=#{escalationMinutes}, emergency_threshold=#{emergencyThreshold},
+        calendar_id=#{calendarId}, is_active=#{isActive} WHERE id=#{id}
+    </update>
+    <delete id="deleteById">DELETE FROM sla_config WHERE id = #{id}</delete>
+</mapper>

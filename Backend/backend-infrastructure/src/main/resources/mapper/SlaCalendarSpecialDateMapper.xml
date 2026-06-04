@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.SlaCalendarSpecialDateMapper">
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.SlaCalendarSpecialDate">
+        <id column="id" property="id"/>
+        <result column="calendar_id" property="calendarId"/>
+        <result column="special_date" property="specialDate"/>
+        <result column="day_type" property="dayType"/>
+        <result column="work_segments" property="workSegments"/>
+        <result column="description" property="description"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+    <select id="findByCalendarId" resultMap="BaseResultMap">SELECT * FROM sla_calendar_special_date WHERE calendar_id = #{calendarId}</select>
+    <select id="findByCalendarIdAndDate" resultMap="BaseResultMap">SELECT * FROM sla_calendar_special_date WHERE calendar_id = #{calendarId} AND special_date = #{specialDate}</select>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sla_calendar_special_date (calendar_id, special_date, day_type, work_segments, description)
+        VALUES (#{calendarId}, #{specialDate}, #{dayType}, #{workSegments}, #{description})
+    </insert>
+    <delete id="deleteById">DELETE FROM sla_calendar_special_date WHERE id = #{id}</delete>
+</mapper>

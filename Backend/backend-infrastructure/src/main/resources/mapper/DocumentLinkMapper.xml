@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.DocumentLinkMapper">
+
+    <select id="findBySourceDocId" resultType="map">
+        SELECT dl.id, dl.link_type, kd.id AS document_id, kd.title
+        FROM knowledge_document_links dl
+        JOIN knowledge_documents kd ON kd.id = dl.target_doc_id
+        WHERE dl.source_doc_id = #{sourceDocId}
+    </select>
+
+    <select id="findByTargetDocId" resultType="map">
+        SELECT dl.id, dl.link_type, kd.id AS document_id, kd.title
+        FROM knowledge_document_links dl
+        JOIN knowledge_documents kd ON kd.id = dl.source_doc_id
+        WHERE dl.target_doc_id = #{targetDocId}
+    </select>
+</mapper>

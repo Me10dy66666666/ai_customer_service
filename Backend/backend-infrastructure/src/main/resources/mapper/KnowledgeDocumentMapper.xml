@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.infrastructure.persistence.mapper.KnowledgeDocumentMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.KnowledgeDocumentEntity">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="toc_json" property="tocJson"/>
+        <result column="file_type" property="fileType"/>
+        <result column="original_file_url" property="originalFileUrl"/>
+        <result column="preview_pdf_path" property="previewPdfPath"/>
+        <result column="ocr_raw_json" property="ocrRawJson"/>
+        <result column="dify_document_id" property="difyDocumentId"/>
+        <result column="dify_sync_status" property="difySyncStatus"/>
+        <result column="category" property="category"/>
+        <result column="tags" property="tags"/>
+        <result column="status" property="status"/>
+        <result column="enabled" property="enabled"/>
+        <result column="version" property="version"/>
+        <result column="is_latest" property="isLatest"/>
+        <result column="published_at" property="publishedAt"/>
+        <result column="expired_at" property="expiredAt"/>
+        <result column="archived_at" property="archivedAt"/>
+        <result column="archive_reason" property="archiveReason"/>
+        <result column="reviewed_by" property="reviewedBy"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, title, content, toc_json, file_type, original_file_url, preview_pdf_path, ocr_raw_json,
+        dify_document_id, dify_sync_status, category, tags, status, enabled, version,
+        is_latest, published_at, expired_at, archived_at, archive_reason,
+        reviewed_by, created_at, updated_at
+    </sql>
+
+    <sql id="Brief_Column_List">
+        id, title, file_type, original_file_url, preview_pdf_path,
+        dify_document_id, dify_sync_status, category, tags, status, enabled, version,
+        is_latest, published_at, expired_at, archived_at, archive_reason,
+        reviewed_by, created_at, updated_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO knowledge_documents (title, content, toc_json, file_type, original_file_url,
+            preview_pdf_path, ocr_raw_json, dify_document_id, dify_sync_status, category, tags, status,
+            enabled, version, is_latest, published_at, expired_at, archived_at, archive_reason,
+            reviewed_by, created_at, updated_at)
+        VALUES (#{title}, #{content}, #{tocJson}, #{fileType}, #{originalFileUrl},
+            #{previewPdfPath}, #{ocrRawJson}, #{difyDocumentId}, #{difySyncStatus}, #{category}, #{tags}, #{status},
+            #{enabled}, #{version}, #{isLatest}, #{publishedAt}, #{expiredAt}, #{archivedAt}, #{archiveReason},
+            #{reviewedBy}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE knowledge_documents
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="tocJson != null">toc_json = #{tocJson},</if>
+            <if test="fileType != null">file_type = #{fileType},</if>
+            <if test="originalFileUrl != null">original_file_url = #{originalFileUrl},</if>
+            <if test="previewPdfPath != null">preview_pdf_path = #{previewPdfPath},</if>
+            <if test="ocrRawJson != null">ocr_raw_json = #{ocrRawJson},</if>
+            <if test="difyDocumentId != null">dify_document_id = #{difyDocumentId},</if>
+            <if test="difySyncStatus != null">dify_sync_status = #{difySyncStatus},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="tags != null">tags = #{tags},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="version != null">version = #{version},</if>
+            <if test="isLatest != null">is_latest = #{isLatest},</if>
+            <if test="publishedAt != null">published_at = #{publishedAt},</if>
+            <if test="expiredAt != null">expired_at = #{expiredAt},</if>
+            <if test="archivedAt != null">archived_at = #{archivedAt},</if>
+            <if test="archiveReason != null">archive_reason = #{archiveReason},</if>
+            <if test="reviewedBy != null">reviewed_by = #{reviewedBy},</if>
+            <if test="reviewedAt != null">reviewed_at = #{reviewedAt},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_documents WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="findAllOrderByCreatedAtDesc" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_documents ORDER BY created_at DESC
+    </select>
+
+    <select id="findByStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_documents WHERE status = #{status} ORDER BY created_at DESC
+    </select>
+
+    <select id="findByStatusIn" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_documents
+        WHERE status IN
+        <foreach collection="statuses" item="s" open="(" separator="," close=")">#{s}</foreach>
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="findByCategory" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_documents WHERE category = #{category} AND status = 'PUBLISHED' AND enabled = 1 ORDER BY created_at DESC
+    </select>
+
+    <select id="countByCategory" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents WHERE category = #{category} AND status = 'PUBLISHED' AND enabled = 1
+    </select>
+
+    <update id="clearCategory">
+        UPDATE knowledge_documents SET category = '' WHERE category = #{category}
+    </update>
+
+    <select id="findByDifyDocumentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM knowledge_documents WHERE dify_document_id = #{difyDocumentId} LIMIT 1
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents WHERE status = #{status}
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM knowledge_documents WHERE id = #{id}
+    </delete>
+
+    <select id="findByStatusBrief" resultMap="BaseResultMap">
+        SELECT <include refid="Brief_Column_List"/>
+        FROM knowledge_documents WHERE status = #{status} AND enabled = 1 ORDER BY created_at DESC
+    </select>
+
+    <select id="searchFulltext" resultMap="BaseResultMap">
+        SELECT <include refid="Brief_Column_List"/>
+        FROM knowledge_documents
+        WHERE status = 'PUBLISHED'
+        AND enabled = 1
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        AND MATCH(content) AGAINST(#{keyword} IN BOOLEAN MODE)
+        ORDER BY MATCH(content) AGAINST(#{keyword} IN BOOLEAN MODE) DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countSearchFulltext" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents
+        WHERE status = 'PUBLISHED'
+        AND enabled = 1
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        AND MATCH(content) AGAINST(#{keyword} IN BOOLEAN MODE)
+    </select>
+
+    <select id="findPendingReviewFiltered" resultMap="BaseResultMap">
+        SELECT <include refid="Brief_Column_List"/>
+        FROM knowledge_documents
+        WHERE status = 'PENDING_REVIEW'
+        <if test="keyword != null and keyword != ''">
+            AND title LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="countPendingReviewFiltered" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents
+        WHERE status = 'PENDING_REVIEW'
+        <if test="keyword != null and keyword != ''">
+            AND title LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+    </select>
+
+    <select id="countByDifySyncStatus" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents WHERE dify_sync_status = #{difySyncStatus}
+    </select>
+
+    <select id="categoryStats" resultType="java.util.HashMap">
+        SELECT category AS name, COUNT(*) AS count
+        FROM knowledge_documents
+        WHERE status = 'PUBLISHED' AND enabled = 1
+        GROUP BY category
+        ORDER BY count DESC
+    </select>
+
+    <select id="countReviewedByAndDate" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents
+        WHERE reviewed_by = #{reviewedBy}
+        AND status IN ('PUBLISHED', 'ARCHIVED')
+        AND updated_at BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="countApprovedByAndDate" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents
+        WHERE reviewed_by = #{reviewedBy}
+        AND status = 'PUBLISHED'
+        AND updated_at BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="countRejectedByAndDate" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents
+        WHERE reviewed_by = #{reviewedBy}
+        AND status = 'ARCHIVED'
+        AND updated_at BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="avgReviewDurationByReviewer" resultType="java.lang.Double">
+        SELECT AVG(TIMESTAMPDIFF(SECOND, reviewed_at, updated_at))
+        FROM knowledge_documents
+        WHERE reviewed_by = #{reviewedBy}
+        AND reviewed_at IS NOT NULL
+        AND status IN ('PUBLISHED', 'ARCHIVED')
+        AND updated_at BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="countReviewTrendByDate" resultType="java.util.Map">
+        SELECT DATE(updated_at) AS statDate,
+               COUNT(*) AS totalCount,
+               SUM(CASE WHEN status = 'PUBLISHED' THEN 1 ELSE 0 END) AS approvedCount,
+               SUM(CASE WHEN status = 'ARCHIVED' THEN 1 ELSE 0 END) AS rejectedCount
+        FROM knowledge_documents
+        WHERE reviewed_by = #{reviewedBy}
+        AND status IN ('PUBLISHED', 'ARCHIVED')
+        AND updated_at BETWEEN #{start} AND #{end}
+        GROUP BY DATE(updated_at) ORDER BY statDate
+    </select>
+
+    <select id="findRecentReviewed" resultType="map">
+        SELECT id AS documentId,
+               title,
+               created_at AS createdAt,
+               updated_at AS reviewedAt,
+               TIMESTAMPDIFF(SECOND, reviewed_at, updated_at) AS reviewDurationSeconds,
+               status AS reviewResult,
+               reviewed_by AS reviewedBy
+        FROM knowledge_documents
+        WHERE status IN ('PUBLISHED', 'ARCHIVED')
+        ORDER BY updated_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM knowledge_documents
+    </select>
+</mapper>

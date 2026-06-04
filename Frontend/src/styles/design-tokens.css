@@ -1,0 +1,204 @@
+/* ══════════════════════════════════════════════
+   Design Tokens — "Mist & Moss"
+   Serene, nature-inspired premium service desk
+   ══════════════════════════════════════════════ */
+
+:root {
+  /* ── Typography ── */
+  --font-heading:   'Crimson Text', Georgia, 'Times New Roman', serif;
+  --font-body:      'Work Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono:      'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --text-3xs: clamp(0.625rem, 1vw, 0.6875rem);
+  --text-2xs: clamp(0.6875rem, 1.2vw, 0.75rem);
+  --text-xs:  clamp(0.75rem, 1.4vw, 0.8125rem);
+  --text-sm:  clamp(0.8125rem, 1.6vw, 0.875rem);
+  --text-md:  clamp(0.9375rem, 1.9vw, 1rem);
+  --text-lg:  clamp(1.0625rem, 2.3vw, 1.1875rem);
+  --text-xl:  clamp(1.25rem, 2.8vw, 1.5rem);
+  --text-2xl: clamp(1.5rem, 3.5vw, 1.875rem);
+  --text-3xl: clamp(1.875rem, 4.5vw, 2.5rem);
+  --text-4xl: clamp(2.25rem, 6vw, 3.25rem);
+
+  --weight-light:   300;
+  --weight-normal:  400;
+  --weight-medium:  500;
+  --weight-semibold: 600;
+  --weight-bold:    700;
+
+  --leading-snug:   1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  /* ── Spacing (4px base) ── */
+  --s-1:  0.25rem;
+  --s-2:  0.5rem;
+  --s-3:  0.75rem;
+  --s-4:  1rem;
+  --s-5:  1.25rem;
+  --s-6:  1.5rem;
+  --s-8:  2rem;
+  --s-10: 2.5rem;
+  --s-12: 3rem;
+  --s-16: 4rem;
+  --s-20: 5rem;
+  --s-24: 6rem;
+
+  /* ── Radii ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  /* ── Easing ── */
+  --ease-out:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-soft:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast:   150ms;
+  --dur-normal: 280ms;
+  --dur-slow:   450ms;
+
+  /* ── Layout ── */
+  --sidebar-w: 248px;
+
+  /* ── Page-level spacing ── */
+  --page-gap:      var(--s-5);
+  --page-pad-x:    var(--s-5);
+  --page-pad-y:    var(--s-4);
+  --section-gap:   var(--s-6);
+
+  /* ── Table density ── */
+  --table-row-py:  var(--s-2);
+  --table-cell-px: var(--s-4);
+
+  /* ── Shadows ── */
+  --shadow-xs:  0 1px 2px  oklch(0.25 0.01 250 / 0.04);
+  --shadow-sm:  0 2px 8px  oklch(0.25 0.01 250 / 0.06);
+  --shadow-md:  0 8px 24px oklch(0.25 0.01 250 / 0.08);
+  --shadow-lg:  0 16px 48px oklch(0.25 0.01 250 / 0.10);
+  --shadow-xl:  0 24px 64px oklch(0.25 0.01 250 / 0.12);
+
+  /* ── Color Palette (OKLCH) ── */
+  /* Sui surface: warm ivory */
+  --surface:      oklch(0.975 0.005 95);
+  /* Base bg: cooler linen */
+  --base:         oklch(0.955 0.005 98);
+  --base-alt:     oklch(0.965 0.008 230);
+
+  /* Deep teal ink */
+  --ink:          oklch(0.22 0.025 210);
+  --ink-soft:     oklch(0.40 0.018 210);
+  --ink-muted:    oklch(0.60 0.015 210);
+
+  /* Misty borders */
+  --border:       oklch(0.88 0.010 210);
+  --border-light: oklch(0.92 0.008 210);
+
+  /* Brand accent — mossy sage */
+  --brand:        oklch(0.52 0.135 175);
+  --brand-soft:   oklch(0.85 0.040 175);
+  --brand-pale:   oklch(0.94 0.018 175);
+  --brand-deep:   oklch(0.38 0.105 175);
+
+  /* Success — olive */
+  --success:      oklch(0.50 0.150 150);
+  --success-soft: oklch(0.90 0.040 150);
+
+  /* Warning — amber */
+  --warning:      oklch(0.62 0.160 75);
+  --warning-soft: oklch(0.92 0.055 75);
+
+  /* Danger — brick rose */
+  --danger:       oklch(0.50 0.170 20);
+  --danger-soft:  oklch(0.93 0.035 20);
+
+  /* Agent accent — dusty plum */
+  --agent:        oklch(0.48 0.120 310);
+  --agent-soft:   oklch(0.90 0.030 310);
+
+  /* Sidebar nav */
+  --nav-bg:       oklch(0.18 0.018 210);
+  --nav-text:     oklch(0.72 0.015 210);
+  --nav-active:   oklch(0.30 0.025 175);
+}
+
+/* ── Motion respect ── */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-normal: 0ms; --dur-slow: 0ms; }
+}
+
+/* ── Global reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--ink);
+  background: var(--base);
+}
+
+a { color: var(--brand); text-decoration: none; }
+a:hover { color: var(--brand-deep); }
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;
+}
+
+/* ══════════════════════════════════════════════
+   Element Plus 下拉菜单圆角柔和风格统一覆盖
+   ══════════════════════════════════════════════ */
+.el-popper.is-light,
+.el-select-dropdown,
+.el-dropdown-menu,
+.el-cascader__dropdown,
+.el-picker__popper,
+.el-date-picker,
+.el-time-panel,
+.el-color-picker__panel,
+.el-autocomplete-suggestion {
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid var(--border-light, #e8edf2) !important;
+}
+
+.el-select-dropdown__item,
+.el-dropdown-menu__item,
+.el-cascader-node {
+  border-radius: 6px !important;
+  margin: 2px 4px !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+  transition: all 0.15s ease !important;
+}
+
+.el-select-dropdown__item:hover,
+.el-dropdown-menu__item:hover,
+.el-cascader-node:hover {
+  background-color: var(--base, #f5f7fa) !important;
+  border-radius: 6px !important;
+}
+
+.el-select-dropdown__item.is-selected {
+  font-weight: 600 !important;
+  color: var(--brand, #4A90D9) !important;
+}
