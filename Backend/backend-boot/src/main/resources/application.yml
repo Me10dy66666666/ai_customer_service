@@ -7,8 +7,8 @@ spring:
   application:
     name: ai-customer-service-backend
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/ai_customer_service?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&tinyInt1isBit=false}
-    username: ${DB_USERNAME:root}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
