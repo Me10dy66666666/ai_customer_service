@@ -42,6 +42,7 @@ public class KnowledgeDocument extends BaseAggregateRoot {
     private String archiveReason;
     private String reviewedBy;
     private LocalDateTime reviewedAt;
+    private LocalDateTime reviewStartedAt;
 
     public boolean isPublished() {
         return STATUS_PUBLISHED.equals(status);

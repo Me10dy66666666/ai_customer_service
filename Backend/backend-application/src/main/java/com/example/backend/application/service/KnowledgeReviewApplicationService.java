@@ -290,6 +290,13 @@ public class KnowledgeReviewApplicationService {
 
     public Map<String, Object> getReviewData(Long documentId) {
         KnowledgeDocument document = getDocumentDetail(documentId);
+
+        // 首次进入审核页时开始计时（若之前未设置过）
+        if (document.getReviewStartedAt() == null) {
+            document.setReviewStartedAt(LocalDateTime.now());
+            documentRepository.save(document);
+        }
+
         List<OcrSegment> segments = ocrSegmentRepository.findByDocumentIdOrderBySegmentIndex(documentId);
 
         Map<String, Object> result = new HashMap<>();
@@ -489,7 +496,7 @@ public class KnowledgeReviewApplicationService {
 
     @Transactional
     @CacheEvict(value = "knowledgeBase", allEntries = true)
-    public void rejectDocument(Long documentId) {
+    public void rejectDocument(Long documentId, String reviewedBy) {
         KnowledgeDocument document = getDocumentDetail(documentId);
 
         if (!KnowledgeDocument.STATUS_PENDING_REVIEW.equals(document.getStatus())
@@ -497,21 +504,18 @@ public class KnowledgeReviewApplicationService {
             throw new BusinessException(400, "仅待审核状态的文档可以被退回");
         }
 
-        if (document.getOriginalFileUrl() != null) {
-            try {
-                Files.deleteIfExists(Paths.get(document.getOriginalFileUrl()));
-            } catch (IOException e) {
-                log.warn("Failed to delete local file for document {}: {}", documentId, e.getMessage());
-            }
+        // 记录审核人、审核时间、审核耗时（从进入审核页开始计时）
+        document.setReviewedBy(reviewedBy);
+        document.setReviewedAt(LocalDateTime.now());
+        if (document.getReviewStartedAt() == null) {
+            document.setReviewStartedAt(LocalDateTime.now());
         }
+        // 归档而非物理删除，审核统计（驳回数/审核趋势/最近审核记录）依赖 status = 'ARCHIVED'
+        document.archive("审核退回");
+        documentRepository.save(document);
 
-        previewService.deletePreviewPdf(documentId);
-
-        ocrSegmentRepository.deleteByDocumentId(documentId);
-        revisionLogRepository.deleteByDocumentId(documentId);
-        documentRepository.deleteById(documentId);
-
-        log.info("Document {} rejected and fully cleaned up", documentId);
+        log.info("Document {} rejected (archived), reviewedBy={}, reviewStartedAt={}, reviewedAt={}",
+                documentId, document.getReviewedBy(), document.getReviewStartedAt(), document.getReviewedAt());
     }
 
     private String buildFinalContent(List<Map<String, Object>> reviewedSegments) {

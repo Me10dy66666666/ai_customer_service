@@ -40,8 +40,8 @@ export const archiveDocument = (documentId, reason) =>
 export const retryDifySync = (documentId) =>
   http.post(`/api/knowledge/${documentId}/retry-sync`)
 
-export const rejectDocument = (documentId) =>
-  http.delete(`/api/knowledge/review/${documentId}/reject`)
+export const rejectDocument = (documentId, reviewedBy) =>
+  http.delete(`/api/knowledge/review/${documentId}/reject`, { data: { reviewedBy } })
 
 export const deleteKnowledgeDocument = (documentId) =>
   http.delete(`/api/knowledge/${documentId}`)

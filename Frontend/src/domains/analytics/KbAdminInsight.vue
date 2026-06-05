@@ -7,7 +7,7 @@
       </div>
       <div class="topbar-right">
         <el-date-picker v-model="dateRange" type="daterange" range-separator="→" start-placeholder="起" end-placeholder="止" value-format="YYYY-MM-DD" class="dp" @change="onDateChange" />
-        <button class="refresh-btn" :disabled="store.loading" @click="refresh">↻</button>
+        <button class="reset-btn" title="重置为默认范围" @click="resetDateRange">↺</button>
       </div>
     </div>
 
@@ -115,15 +115,6 @@ const dateRange = ref([weekStart.toISOString().slice(0, 10), d.toISOString().sli
 
 const today = new Date().toISOString().slice(0, 10)
 
-const monthStart = computed(() => {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-})
-const monthEnd = computed(() => {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
-})
-
 const chartReviewRef = ref(null)
 const chartKbHealthRef = ref(null)
 const chartDocStatusRef = ref(null)
@@ -137,7 +128,7 @@ const statCards = computed(() => {
   const m = store.monthlyReview
   return [
     { label: '今日审核文档', value: r?.reviewedCount ?? '-' },
-    { label: '本月审核总量', value: m?.totalReviewed ?? '-' },
+    { label: '审核总量', value: m?.totalReviewed ?? '-' },
     { label: '待审核积压', value: r?.pendingBacklog ?? '-' },
     { label: '平均审核耗时', value: r?.avgReviewMinutes != null ? r.avgReviewMinutes.toFixed(1) : '-', unit: 'min' },
     { label: '审核通过率', value: r?.passRate != null ? r.passRate.toFixed(1) : '-', unit: '%' }
@@ -170,6 +161,7 @@ function renderReviewChart() {
   setTimeout(() => {
     const t = store.reviewTrend
     chart.setOption({
+      animation: false,
       tooltip: { trigger: 'axis' },
       legend: { bottom: 0, textStyle: { fontSize: 11, color: '#7b8c9a' }, itemWidth: 12, itemHeight: 12 },
       grid: { left: 10, right: 20, top: 10, bottom: 30, containLabel: true },
@@ -194,11 +186,13 @@ function renderKbHealthChart() {
     const t = store.kbHealthTrend
     if (!t || !t.dates || t.dates.length === 0) {
       chart.setOption({
+        animation: false,
         title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } },
         series: []
       })
     } else {
       chart.setOption({
+        animation: false,
         tooltip: { trigger: 'axis', formatter: '{b}<br/>命中率: {c}%' },
         grid: { left: 10, right: 20, top: 10, bottom: 10, containLabel: true },
         xAxis: { type: 'category', data: t.dates, axisLabel: { color: '#7b8c9a', fontSize: 10 } },
@@ -228,6 +222,7 @@ function renderDocStatusChart() {
   setTimeout(() => {
     const dist = store.docStatusDist?.distribution || {}
     chart.setOption({
+      animation: false,
       tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
       series: [{
         type: 'pie', radius: ['45%', '72%'], center: ['50%', '52%'],
@@ -260,11 +255,13 @@ function renderKbEffectChart() {
     const t = store.kbEffectTrend
     if (!t || !t.dates || t.dates.length === 0) {
       chart.setOption({
+        animation: false,
         title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } },
         series: []
       })
     } else {
       chart.setOption({
+        animation: false,
         tooltip: { trigger: 'axis' },
         legend: { bottom: 0, textStyle: { fontSize: 11, color: '#7b8c9a' }, itemWidth: 12, itemHeight: 12 },
         grid: { left: 10, right: 20, top: 10, bottom: 30, containLabel: true },
@@ -300,12 +297,20 @@ function onDateChange() {
 }
 
 async function refresh() {
-  await store.fetchAll(reviewedBy.value, today, monthStart.value, monthEnd.value, dateRange.value[0], dateRange.value[1])
+  await store.fetchAll(reviewedBy.value, today, dateRange.value[0], dateRange.value[1], dateRange.value[0], dateRange.value[1])
   renderAll()
 }
 
+function resetDateRange() {
+  const d = new Date()
+  const sixDaysAgo = new Date(d)
+  sixDaysAgo.setDate(sixDaysAgo.getDate() - 6)
+  dateRange.value = [sixDaysAgo.toISOString().slice(0, 10), d.toISOString().slice(0, 10)]
+  refresh()
+}
+
 onMounted(async () => {
-  await store.fetchAll(reviewedBy.value, today, monthStart.value, monthEnd.value, dateRange.value[0], dateRange.value[1])
+  await store.fetchAll(reviewedBy.value, today, dateRange.value[0], dateRange.value[1], dateRange.value[0], dateRange.value[1])
   renderAll()
   refreshTimer = setInterval(refresh, 30000)
 })
@@ -331,6 +336,8 @@ onUnmounted(() => {
 .dp { width: 260px; }
 .refresh-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--base); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: var(--ink-soft); transition: all 150ms; }
 .refresh-btn:hover { border-color: var(--brand); color: var(--brand); }
+.reset-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--base); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: var(--ink-soft); transition: all 150ms; }
+.reset-btn:hover { border-color: var(--brand); color: var(--brand); }
 .insight-stage { flex: 1; overflow-y: auto; padding: 28px; }
 .stat-row { display: grid; gap: 16px; margin-bottom: 24px; }
 .stat-row-5 { grid-template-columns: repeat(5, 1fr); }

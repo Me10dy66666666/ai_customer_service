@@ -259,6 +259,7 @@ CREATE TABLE IF NOT EXISTS knowledge_documents (
     archive_reason VARCHAR(64) COMMENT '归档原因',
     reviewed_by VARCHAR(64) COMMENT '审核人',
     reviewed_at DATETIME COMMENT '审核提交时间',
+    review_started_at DATETIME COMMENT '审核开始时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_status (status),
@@ -578,3 +579,8 @@ AFTER `exclude_from_sla`;
 ALTER TABLE `chat_messages`
 ADD COLUMN `satisfaction` TINYINT(1) NULL DEFAULT NULL COMMENT '服务评价 1-5星，NULL=未评价，仅sender_type=AGENT写入'
 AFTER `message_seq`;
+
+-- knowledge_documents 添加审核开始字段
+ALTER TABLE knowledge_documents 
+ADD COLUMN review_started_at DATETIME COMMENT '审核开始时间' 
+AFTER reviewed_at;

@@ -136,6 +136,7 @@ public class KnowledgeDocumentRepositoryImpl implements KnowledgeDocumentReposit
         doc.setArchiveReason(po.getArchiveReason());
         doc.setReviewedBy(po.getReviewedBy());
         doc.setReviewedAt(po.getReviewedAt());
+        doc.setReviewStartedAt(po.getReviewStartedAt());
         doc.setCreateTime(po.getCreatedAt());
         doc.setUpdateTime(po.getUpdatedAt());
         return doc;

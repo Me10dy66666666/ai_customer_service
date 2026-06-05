@@ -27,6 +27,7 @@ public class KnowledgeDocumentEntity {
     private String archiveReason;
     private String reviewedBy;
     private LocalDateTime reviewedAt;
+    private LocalDateTime reviewStartedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

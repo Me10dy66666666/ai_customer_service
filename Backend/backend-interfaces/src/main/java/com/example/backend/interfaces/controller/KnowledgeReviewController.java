@@ -2,6 +2,7 @@ package com.example.backend.interfaces.controller;
 
 import com.example.backend.application.service.KnowledgeReviewApplicationService;
 import com.example.backend.application.service.KnowledgeStatsApplicationService;
+import com.example.backend.common.BusinessException;
 import com.example.backend.common.Result;
 import com.example.backend.domain.knowledge.model.KnowledgeDocument;
 import com.example.backend.domain.knowledge.service.KnowledgeSearchService;
@@ -61,6 +62,9 @@ public class KnowledgeReviewController {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> segments = (List<Map<String, Object>>) body.get("segments");
         String reviewedBy = (String) body.getOrDefault("reviewedBy", "admin");
+        if (reviewedBy == null || reviewedBy.isBlank()) {
+            throw new BusinessException(400, "审核人不能为空");
+        }
         return Result.success(reviewService.submitReview(documentId, segments, reviewedBy));
     }
 
@@ -172,8 +176,10 @@ public class KnowledgeReviewController {
 
     @DeleteMapping("/review/{documentId}/reject")
     @RequireRole({"ADMIN", "KB_ADMIN"})
-    public Result<Object> rejectDocument(@PathVariable Long documentId) {
-        reviewService.rejectDocument(documentId);
+    public Result<Object> rejectDocument(@PathVariable Long documentId,
+                                          @RequestBody(required = false) Map<String, Object> body) {
+        String reviewedBy = body != null ? (String) body.getOrDefault("reviewedBy", "system") : "system";
+        reviewService.rejectDocument(documentId, reviewedBy);
         return Result.success(null);
     }
 

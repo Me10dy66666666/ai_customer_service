@@ -194,6 +194,7 @@ import http from '@/core/axios'
 import * as knowledgeService from '@/domains/knowledge/knowledgeService'
 import { toDisplayCategory } from '@/domains/knowledge/categoryConstants'
 import { useCategoryStore } from '@/shared/stores/categoryStore'
+import { useAuthStore } from '@/shared/stores/authStore'
 
 const activeTab = ref('pending')
 const selectedFile = ref(null)
@@ -486,14 +487,15 @@ function confirmAllPending() {
 async function doReject() {
   try {
     await ElMessageBox.confirm(
-      '此操作将彻底清除该文档及所有关联数据，不可恢复。',
+      '退回后文档将归档，可在数据面板的审核记录中查看。确认退回？',
       '确认退回文档',
       { confirmButtonText: '确认退回', cancelButtonText: '取消', type: 'warning' }
     )
   } catch { return }
   try {
-    await knowledgeService.rejectDocument(reviewDoc.value.id)
-    ElMessage.success('已退回，文档已彻底清除')
+    const authStore = useAuthStore()
+    await knowledgeService.rejectDocument(reviewDoc.value.id, authStore.username || 'KB_ADMIN')
+    ElMessage.success('已退回，文档已归档')
     clearAutoSave()
     localStorage.removeItem('review-draft-' + reviewDoc.value.id)
     reviewing.value = false
@@ -589,7 +591,8 @@ async function doSubmitReview() {
     const segments = reviewSegments.value.map(s => ({
       id: s.id, status: s.status, reviewedText: s.reviewedText || s.ocrText, ocrText: s.ocrText
     }))
-    const res = await knowledgeService.submitReview(reviewDoc.value.id, segments, 'admin')
+    const authStore = useAuthStore()
+    const res = await knowledgeService.submitReview(reviewDoc.value.id, segments, authStore.username || 'KB_ADMIN')
     if (res.data.code === 200) {
       ElMessage.success('审核通过，已发布')
       clearAutoSave()

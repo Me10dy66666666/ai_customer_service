@@ -97,7 +97,7 @@
         AND responded_at IS NOT NULL
         AND response_deadline IS NOT NULL
         AND responded_at &lt;= response_deadline
-        AND create_time BETWEEN #{start} AND #{end}
+        AND responded_at BETWEEN #{start} AND #{end}
     </select>
     <select id="countResponseBreachedByAgent" resultType="int">
         SELECT COUNT(*) FROM work_orders
@@ -105,7 +105,7 @@
         AND exclude_from_sla = 0
         AND response_deadline IS NOT NULL
         AND (responded_at IS NULL OR responded_at &gt; response_deadline)
-        AND create_time BETWEEN #{start} AND #{end}
+        AND (responded_at BETWEEN #{start} AND #{end} OR (responded_at IS NULL AND create_time BETWEEN #{start} AND #{end}))
     </select>
     <select id="countResolutionCompliantByAgent" resultType="int">
         SELECT COUNT(*) FROM work_orders
@@ -130,7 +130,7 @@
         WHERE first_responder_id = #{agentId}
         AND exclude_from_sla = 0
         AND effective_response_seconds IS NOT NULL
-        AND create_time BETWEEN #{start} AND #{end}
+        AND responded_at BETWEEN #{start} AND #{end}
     </select>
     <select id="avgEffectiveResolutionByAgent" resultType="double">
         SELECT AVG(effective_resolution_seconds) FROM work_orders
@@ -155,10 +155,10 @@
         SELECT COUNT(*) FROM work_orders
         WHERE ((first_responder_id = #{agentId}) OR (resolver_id = #{agentId}))
         AND exclude_from_sla = 0
-        AND create_time BETWEEN #{start} AND #{end}
+        AND (responded_at BETWEEN #{start} AND #{end} OR create_time BETWEEN #{start} AND #{end})
     </select>
     <select id="countSlaTrendByDate" resultType="java.util.Map">
-        SELECT DATE(create_time) AS statDate,
+        SELECT DATE(COALESCE(responded_at, create_time)) AS statDate,
                SUM(CASE WHEN (first_responder_id = #{agentId} AND responded_at IS NOT NULL AND responded_at &lt;= response_deadline)
                         OR (resolver_id = #{agentId} AND status = 'completed' AND update_time &lt;= sla_deadline)
                         THEN 1 ELSE 0 END) AS slaCompliant,
@@ -166,8 +166,8 @@
         FROM work_orders
         WHERE exclude_from_sla = 0
         AND (first_responder_id = #{agentId} OR resolver_id = #{agentId})
-        AND create_time BETWEEN #{start} AND #{end}
-        GROUP BY DATE(create_time)
+        AND (responded_at BETWEEN #{start} AND #{end} OR create_time BETWEEN #{start} AND #{end})
+        GROUP BY DATE(COALESCE(responded_at, create_time))
         ORDER BY statDate
     </select>
     <select id="countSlaOverview" resultType="java.util.Map">
@@ -179,7 +179,7 @@
             SUM(CASE WHEN status IN ('completed','cancelled') AND update_time &gt; sla_deadline THEN 1 ELSE 0 END) AS resolutionBreached
         FROM work_orders
         WHERE exclude_from_sla = 0
-        AND create_time BETWEEN #{start} AND #{end}
+        AND (responded_at BETWEEN #{start} AND #{end} OR create_time BETWEEN #{start} AND #{end})
     </select>
     <select id="countSlaAgentRanking" resultType="java.util.Map">
         SELECT

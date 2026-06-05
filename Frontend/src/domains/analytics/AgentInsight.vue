@@ -7,7 +7,7 @@
       </div>
       <div class="topbar-right">
         <el-date-picker v-model="dateRange" type="daterange" range-separator="→" start-placeholder="起" end-placeholder="止" value-format="YYYY-MM-DD" class="dp" @change="onDateChange" />
-        <button class="refresh-btn" :disabled="store.loading" @click="refresh">↻</button>
+        <button class="reset-btn" title="重置为默认范围" @click="resetDateRange">↺</button>
       </div>
     </div>
 
@@ -22,7 +22,7 @@
 
       <div class="chart-grid">
         <div class="ch-card">
-          <h3>近 7 天接待量趋势</h3>
+          <h3>接待量趋势</h3>
           <div ref="chartSessionsRef" class="chart-box"></div>
         </div>
         <div class="ch-card">
@@ -33,12 +33,12 @@
 
       <div class="chart-grid chart-grid-2">
         <div class="ch-card">
-          <h3>本月工单状态分布</h3>
+          <h3>工单状态分布</h3>
           <div ref="chartWoStatusRef" class="chart-box"></div>
         </div>
         <div class="ch-card">
           <div class="ch-card-head">
-            <h3>本月工单满意度评价</h3>
+            <h3>工单满意度评价</h3>
             <select v-model="woSatisFilter" class="wo-satis-select" @change="onWoSatisFilterChange">
               <option value="all">全部</option>
               <option value="售前">售前</option>
@@ -51,7 +51,7 @@
 
       <div class="chart-grid chart-grid-2">
         <div class="ch-card">
-          <h3>本月与团队平均对比</h3>
+          <h3>与团队平均对比</h3>
           <div class="compare-legend">
             <span class="legend-item me"><i></i>我的数据</span>
             <span class="legend-item avg"><i></i>团队平均</span>
@@ -68,7 +68,7 @@
           </div>
         </div>
         <div class="ch-card">
-          <h3>本月团队排名</h3>
+          <h3>团队排名</h3>
           <div ref="chartRankRef" class="chart-box"></div>
         </div>
       </div>
@@ -98,14 +98,15 @@ const endDate = computed(() => dateRange.value[1])
 // 实际今日日期（日统计始终用今天）
 const todayStr = computed(() => fmtD(new Date()))
 
-// 自然月范围（月统计用当月1号～当天）
-const monthStartStr = computed(() => {
-  const d = new Date()
-  return fmtD(new Date(d.getFullYear(), d.getMonth(), 1))
-})
-const monthEndStr = computed(() => fmtD(new Date()))
-
 function onDateChange() {
+  refresh()
+}
+
+function resetDateRange() {
+  const d = new Date()
+  const sixDaysAgo = new Date(d)
+  sixDaysAgo.setDate(sixDaysAgo.getDate() - 6)
+  dateRange.value = [fmtD(sixDaysAgo), fmtD(d)]
   refresh()
 }
 
@@ -123,12 +124,12 @@ const statCards = computed(() => {
   const wo = store.workOrderStats
   return [
     { label: '今日接待会话', value: d?.sessionsHandled ?? '-', unit: '次', icon: '💬' },
-    { label: '本月累计接待', value: m?.totalSessions ?? '-', unit: '次', icon: '📊' },
-    { label: '本月客户满意度', value: m?.avgSatisfaction?.toFixed(1) ?? '-', unit: '分', icon: '⭐' },
+    { label: '累计接待', value: m?.totalSessions ?? '-', unit: '次', icon: '📊' },
+    { label: '客户满意度', value: m?.avgSatisfaction?.toFixed(1) ?? '-', unit: '分', icon: '⭐' },
     { label: 'SLA 达成率', value: d?.responseSlaComplianceRate?.toFixed(1) ?? '-', unit: '%', icon: '⏱️' },
     { label: '平均首次响应', value: d?.avgResponseSeconds != null ? (Math.max(0, d.avgResponseSeconds) / 60).toFixed(1) : '-', unit: 'min', icon: '⚡' },
-    { label: '本月工单总数', value: wo?.totalCount ?? '-', unit: '个', icon: '📋' },
-    { label: '本月已解决工单', value: wo?.completedCount ?? '-', unit: '个', icon: '✅' },
+    { label: '工单总数', value: wo?.totalCount ?? '-', unit: '个', icon: '📋' },
+    { label: '已解决工单', value: wo?.completedCount ?? '-', unit: '个', icon: '✅' },
     { label: '工单解决率', value: wo?.resolutionRate?.toFixed(1) ?? '-', unit: '%', icon: '🎯' }
   ]
 })
@@ -143,7 +144,7 @@ const compareItems = computed(() => {
   const teamSessions = ta?.teamTotalSessions ?? null
   const mySatisfaction = m?.avgSatisfaction ?? null
   const teamSatisfaction = ta?.teamAvgSatisfaction ?? null
-  const mySla = store.dailyStats?.responseSlaComplianceRate ?? null
+  const mySla = store.monthlyStats?.responseSlaComplianceRate ?? null
   const teamSla = ta?.teamSlaRate ?? null
   const myResponse = store.dailyStats?.avgResponseSeconds ?? null
   const teamResponse = ta?.teamAvgFirstResponseSeconds ?? null
@@ -183,11 +184,11 @@ function renderSessionChart() {
   setTimeout(() => {
     const trend = store.trendStats
     if (!trend?.dates || trend.dates.length === 0 || !trend?.counts) {
-      chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } }, series: [] }, { notMerge: true })
+      chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } }, series: [] })
       return
     }
     chart.setOption({
-      tooltip: { trigger: 'axis' },
+      tooltip: { trigger: 'item' },
       grid: { left: 10, right: 20, top: 10, bottom: 10, containLabel: true },
       xAxis: {
         type: 'category', data: trend?.dates || [],
@@ -200,13 +201,25 @@ function renderSessionChart() {
         axisLabel: { color: '#7b8c9a', fontSize: 11 }
       },
       series: [{
-        data: trend?.counts || [], type: 'bar', barWidth: 24,
+        data: trend?.counts || [], type: 'bar', barWidth: 20,
         itemStyle: {
           borderRadius: [4, 4, 0, 0],
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'oklch(0.58 0.120 175)' },
             { offset: 1, color: 'oklch(0.45 0.100 175)' }
           ])
+        },
+        emphasis: {
+          barWidth: 32,
+          itemStyle: {
+            borderRadius: [4, 4, 0, 0],
+            shadowBlur: 12,
+            shadowColor: 'oklch(0.50 0.130 175 / 0.35)',
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'oklch(0.68 0.150 175)' },
+              { offset: 1, color: 'oklch(0.55 0.130 175)' }
+            ])
+          }
         }
       }]
     })
@@ -230,7 +243,7 @@ function renderRankChart() {
       if (myId) {
         effectiveRanking = [{ agentId: myId, sessionCount: store.monthlyStats?.totalSessions || 0, rank: 1 }]
       } else {
-        chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } }, series: [] }, { notMerge: true })
+        chart.setOption({ animation: false, title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } }, series: [] })
         return
       }
     }
@@ -248,6 +261,7 @@ function renderRankChart() {
       })
     })
     chart.setOption({
+      animation: false,
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: params => params[0] ? `${params[0].name}: ${params[0].value} 次会话` : '' },
       grid: { left: 60, right: 20, top: 10, bottom: 10 },
       xAxis: { type: 'value', splitLine: { lineStyle: { color: '#edf1f4' } }, axisLabel: { color: '#7b8c9a', fontSize: 11 } },
@@ -267,7 +281,7 @@ function renderSatisfactionChart() {
   setTimeout(() => {
     const dist = store.satisfactionDist?.distribution
     if (!dist || !store.satisfactionDist?.total) {
-      chart.setOption({ animation: false, title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } }, series: [] }, { notMerge: true })
+      chart.setOption({ animation: false, title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } }, series: [] })
       return
     }
     const pieData = [5, 4, 3, 2, 1].map(n => ({
@@ -280,6 +294,7 @@ function renderSatisfactionChart() {
       }
     }))
     chart.setOption({
+      animation: false,
       tooltip: { trigger: 'item', formatter: '{b}: {c} 人 ({d}%)' },
       series: [{
         type: 'pie', radius: ['50%', '78%'], center: ['50%', '52%'],
@@ -307,7 +322,7 @@ function renderWoStatusChart() {
         title: { text: '暂无工单数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } },
         graphic: [{ type: 'text', left: 'center', top: '40%', style: { text: '📋', fontSize: 40, textAlign: 'center', opacity: 0.3 } }],
         series: []
-      }, { notMerge: true })
+      })
       return
     }
     const pieData = [
@@ -317,6 +332,7 @@ function renderWoStatusChart() {
       { value: wo.cancelledCount || 0, name: '已取消', itemStyle: { color: '#d9534f' } }
     ]
     chart.setOption({
+      animation: false,
       tooltip: { trigger: 'item', formatter: '{b}: {c} 个 ({d}%)' },
       series: [{
         type: 'pie', radius: ['50%', '78%'], center: ['50%', '52%'],
@@ -343,7 +359,7 @@ function renderWoSatisChart() {
         title: { text: '暂无评价数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } },
         graphic: [{ type: 'text', left: 'center', top: '40%', style: { text: '⭐', fontSize: 40, textAlign: 'center', opacity: 0.3 } }],
         series: []
-      }, { notMerge: true })
+      })
       return
     }
     const pieData = [5, 4, 3, 2, 1].map(n => ({
@@ -356,6 +372,7 @@ function renderWoSatisChart() {
       }
     }))
     chart.setOption({
+      animation: false,
       tooltip: { trigger: 'item', formatter: '{b}: {c} 单 ({d}%)' },
       series: [{
         type: 'pie', radius: ['50%', '78%'], center: ['50%', '52%'],
@@ -394,14 +411,14 @@ let refreshTimer = null
 
 async function refresh() {
   if (!agentId.value) { console.warn('[AgentInsight] refresh: agentId 为空，跳过'); return }
-  console.log('[AgentInsight] refresh: 开始加载, today=', todayStr.value, 'monthRange=', monthStartStr.value, '~', monthEndStr.value, 'trendRange=', startDate.value, '~', endDate.value)
-  await store.fetchAll(agentId.value, todayStr.value, monthStartStr.value, monthEndStr.value, startDate.value, endDate.value)
+  console.log('[AgentInsight] refresh: 开始加载, today=', todayStr.value, 'range=', startDate.value, '~', endDate.value)
+  await store.fetchAll(agentId.value, endDate.value, startDate.value, endDate.value, startDate.value, endDate.value)
   renderAll()
 }
 
 onMounted(async () => {
   if (!agentId.value) return
-  await store.fetchAll(agentId.value, todayStr.value, monthStartStr.value, monthEndStr.value, startDate.value, endDate.value)
+  await store.fetchAll(agentId.value, endDate.value, startDate.value, endDate.value, startDate.value, endDate.value)
   renderAll()
   refreshTimer = setInterval(refresh, 30000)
 })
@@ -439,6 +456,8 @@ onUnmounted(() => {
   transition: all 150ms;
 }
 .refresh-btn:hover { border-color: var(--brand); color: var(--brand); }
+.reset-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--base); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: var(--ink-soft); transition: all 150ms; }
+.reset-btn:hover { border-color: var(--brand); color: var(--brand); }
 .insight-stage { flex: 1; overflow-y: auto; padding: 28px; }
 .stat-row { display: grid; gap: 16px; margin-bottom: 24px; }
 .stat-row-4x2 { grid-template-columns: repeat(4, 1fr); }

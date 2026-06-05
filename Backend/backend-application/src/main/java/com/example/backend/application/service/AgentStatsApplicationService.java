@@ -336,10 +336,8 @@ public class AgentStatsApplicationService {
         Map<String, Object> slaOverview = workOrderMapper.countSlaOverview(start, end);
         int totalWorkOrders = slaOverview != null ? toInt(slaOverview.get("totalWorkOrders")) : 0;
         int responseCompliant = slaOverview != null ? toInt(slaOverview.get("responseCompliant")) : 0;
-        int resolutionCompliant = slaOverview != null ? toInt(slaOverview.get("resolutionCompliant")) : 0;
-        int combinedCompliant = responseCompliant + resolutionCompliant;        
         Double teamSlaRate = totalWorkOrders > 0
-                ? Math.round(combinedCompliant * 10000.0 / totalWorkOrders) / 100.0
+                ? Math.round(responseCompliant * 10000.0 / totalWorkOrders) / 100.0
                 : 0.0;
 
         Double teamAvgFirstResponseSeconds = chatMessageMapper.avgFirstResponseSecondsByDate(start, end);
