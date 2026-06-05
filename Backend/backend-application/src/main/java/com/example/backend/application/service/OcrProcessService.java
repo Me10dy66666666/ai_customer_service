@@ -9,7 +9,7 @@ import com.example.backend.domain.knowledge.repository.KnowledgeRevisionLogRepos
 import com.example.backend.domain.knowledge.repository.OcrSegmentRepository;
 import com.example.backend.domain.shared.ocr.OcrPort;
 import com.example.backend.domain.shared.ocr.OcrResult;
-import com.example.backend.infrastructure.ocr.ImagePreprocessor;
+
 import com.example.backend.infrastructure.ocr.OcrProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -128,7 +128,6 @@ public class OcrProcessService {
                 segments = ocrPdfFile(document.getId(), savedFile);
             } else {
                 byte[] imageBytes = Files.readAllBytes(savedFile.toPath());
-                imageBytes = ImagePreprocessor.preprocess(imageBytes);
                 segments = ocrImage(document.getId(), 1, imageBytes);
                 segments = inferOcrLayout(segments);
             }
@@ -218,6 +217,11 @@ public class OcrProcessService {
             OcrSegment seg = buildSegment(documentId, startIndex, result.getText(),
                     result.getConfidence(), threshold, 0, 0, 0, 0);
             segments.add(seg);
+        }
+
+        if (segments.isEmpty()) {
+            log.warn("OCR returned empty result for documentId={}: text is blank and no word blocks found",
+                    documentId);
         }
         return segments;
     }

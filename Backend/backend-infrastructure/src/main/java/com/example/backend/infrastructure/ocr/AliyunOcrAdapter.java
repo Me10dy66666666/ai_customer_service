@@ -34,6 +34,15 @@ public class AliyunOcrAdapter implements OcrPort {
     private static final int MAX_RETRIES = 3;
     private static final long BASE_RETRY_DELAY_MS = 1000;
 
+    /** 永久性错误码——重试无效，应立即终止 */
+    private static final Set<String> NON_RETRYABLE_CODES = Set.of(
+            "InvalidAccessKeyId",
+            "InvalidAccessKeySecret",
+            "SignatureDoesNotMatch",
+            "Forbidden.AccessKeyDisabled",
+            "Forbidden.RAMUserNotAuthorized"
+    );
+
     private final OcrProperties properties;
     private final ObjectMapper objectMapper;
 
@@ -58,6 +67,10 @@ public class AliyunOcrAdapter implements OcrPort {
                 return parseResponse(responseJson);
             } catch (Exception e) {
                 lastException = e;
+                if (isNonRetryableError(e)) {
+                    log.error("Aliyun OCR [{}] permanent error, aborting retries: {}", action, e.getMessage());
+                    break;
+                }
                 if (attempt < MAX_RETRIES - 1) {
                     long delay = BASE_RETRY_DELAY_MS * (1L << attempt);
                     log.warn("Aliyun OCR [{}] attempt {}/{} failed: {}, retrying in {}ms",
@@ -68,6 +81,8 @@ public class AliyunOcrAdapter implements OcrPort {
         }
         log.error("Aliyun OCR [{}] failed after {} attempts: {}", action, MAX_RETRIES,
                 lastException != null ? lastException.getMessage() : "unknown");
+        log.warn("Aliyun OCR [{}] returning empty fallback — downstream will receive no text and no blocks. "
+                + "Check network, API credentials, and image quality.", action);
         OcrResult fallback = new OcrResult();
         fallback.setText("");
         fallback.setConfidence(0);
@@ -78,6 +93,22 @@ public class AliyunOcrAdapter implements OcrPort {
     @Override
     public String engineName() {
         return "AliyunOCR";
+    }
+
+    /**
+     * 判断异常是否为永久性错误（如 AccessKey 无效），此类错误重试无效。
+     */
+    private boolean isNonRetryableError(Exception e) {
+        String msg = e.getMessage();
+        if (msg == null) {
+            return false;
+        }
+        for (String code : NON_RETRYABLE_CODES) {
+            if (msg.contains(code)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String resolveAction(Map<String, Object> hints) {
@@ -154,11 +185,14 @@ public class AliyunOcrAdapter implements OcrPort {
                 parseDataContent(root, result);
             } else if (isErrorResponse(root)) {
                 handleApiError(root);
+            } else {
+                log.warn("Aliyun OCR response has neither Data nor Code, raw (first 500 chars): {}",
+                        json.substring(0, Math.min(500, json.length())));
             }
         } catch (Exception e) {
-            log.error("Failed to parse OCR response: {}", e.getMessage());
-            result.setText("");
-            result.setConfidence(0);
+            log.error("Failed to parse OCR response: {}, raw (first 500 chars): {}",
+                    e.getMessage(), json.substring(0, Math.min(500, json.length())));
+            throw new RuntimeException("Failed to parse OCR response: " + e.getMessage(), e);
         }
         return result;
     }
@@ -178,6 +212,9 @@ public class AliyunOcrAdapter implements OcrPort {
         parseWordBlocks(dataObj, result);
         result.setLanguage(properties.getDefaultLanguage());
         fillTextFromBlocksIfBlank(result);
+        log.debug("Aliyun OCR parsed: contentLength={}, wordBlockCount={}, finalTextLen={}",
+                fullContent.length(), result.getBlocks() != null ? result.getBlocks().size() : 0,
+                result.getText() != null ? result.getText().length() : 0);
     }
 
     private JsonNode extractDataObject(JsonNode root) throws Exception {
@@ -240,6 +277,7 @@ public class AliyunOcrAdapter implements OcrPort {
         String code = root.get("Code").asText();
         String message = root.has("Message") ? root.get("Message").asText() : "";
         log.error("Aliyun OCR API error: code={}, message={}", code, message);
+        throw new RuntimeException("Aliyun OCR API error: " + code + " - " + message);
     }
 
     private String postBinary(String urlStr, byte[] imageBytes) throws IOException, URISyntaxException {
@@ -268,6 +306,7 @@ public class AliyunOcrAdapter implements OcrPort {
             String responseStr = new String(responseBytes, StandardCharsets.UTF_8);
             if (statusCode >= 400) {
                 log.error("Aliyun OCR HTTP {} : {}", statusCode, responseStr);
+                throw new RuntimeException("Aliyun OCR HTTP " + statusCode + ": " + responseStr);
             }
             return responseStr;
         } finally {

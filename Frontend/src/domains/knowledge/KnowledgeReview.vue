@@ -75,11 +75,7 @@
     <div v-if="reviewing" class="kr-review-overlay" @keydown="handleShortcut" tabindex="0" ref="overlayEl">
       <div class="kr-review">
         <div class="kr-review-bar">
-          <h3>审核：{{ reviewDoc?.title }}
-            <span class="kr-badge kr-badge-count">
-              已确认 {{ confirmedCount }} | 已修正 {{ reviewedCount }} | ⚠ 存疑 {{ uncertainCount }} | 已跳过 {{ skippedCount }} | 待定 {{ pendingCount }}
-            </span>
-          </h3>
+          <h3>审核：{{ reviewDoc?.title }}</h3>
           <div class="kr-bar-group">
             <button class="kr-btn" @click="closeReview">关闭</button>
             <button class="kr-btn" @click="saveDraft">暂存</button>

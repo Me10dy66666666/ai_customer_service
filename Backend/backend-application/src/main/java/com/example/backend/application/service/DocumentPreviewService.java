@@ -70,7 +70,7 @@ public class DocumentPreviewService {
 
     private String copyPdfToPreviewDir(Long documentId, File source) {
         try {
-            Path targetPath = previewDir.resolve("doc-" + documentId + ".pdf");
+            Path targetPath = previewDir.resolve("doc-" + documentId + "-preview.pdf");
             Files.copy(source.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
             log.info("PDF copied as preview for document {}: {}", documentId, targetPath);
             return targetPath.toString();
@@ -200,7 +200,7 @@ public class DocumentPreviewService {
             return null;
         }
 
-        Path targetPath = previewDir.resolve("doc-" + documentId + ".pdf");
+        Path targetPath = previewDir.resolve("doc-" + documentId + "-preview.pdf");
         try {
             Files.move(convertedPdf, targetPath, StandardCopyOption.REPLACE_EXISTING);
             log.info("Document {} converted to PDF: {}", documentId, targetPath);
@@ -232,7 +232,7 @@ public class DocumentPreviewService {
     }
 
     public void deletePreviewPdf(Long documentId) {
-        Path previewPath = previewDir.resolve("doc-" + documentId + ".pdf");
+        Path previewPath = previewDir.resolve("doc-" + documentId + "-preview.pdf");
         try {
             Files.deleteIfExists(previewPath);
         } catch (IOException e) {
