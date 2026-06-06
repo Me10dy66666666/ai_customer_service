@@ -11,5 +11,7 @@ public interface AgentSkillMapper {
     List<Map<String, Object>> findAllActiveAgentSkills();
     List<String> findSkillsByAgentId(@Param("agentId") Long agentId);
     int insertSkill(@Param("agentId") Long agentId, @Param("skillName") String skillName);
+    List<Long> findAgentIdsBySkill(@Param("skillName") String skillName);
+
     int deleteByAgentId(@Param("agentId") Long agentId);
 }

@@ -14,6 +14,8 @@ public interface WorkOrderRepository {
     List<WorkOrder> findPaginated(int offset, int limit);
     int countAll();
     int countActiveByHandlerId(Long handlerId);
+    List<WorkOrder> findByHandlerOrUnassigned(Long handlerId, int offset, int limit);
+    int countByHandlerOrUnassigned(Long handlerId);
     boolean claimWorkOrder(Long id, Long handlerId);
     List<WorkOrder> findBySessionId(String sessionId);
     int countActiveBySessionId(String sessionId);

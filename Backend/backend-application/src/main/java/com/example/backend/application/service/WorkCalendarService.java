@@ -70,13 +70,24 @@ public class WorkCalendarService {
                 current = getNextServiceTimeInternal(current, data);
                 continue;
             }
-            LocalDateTime endOfDay = getEndOfServiceDay(current, data);
-            long availableSeconds = ChronoUnit.SECONDS.between(current, endOfDay);
-            if (remainingSeconds <= availableSeconds) {
-                return current.plusSeconds(remainingSeconds);
+            LocalDate date = current.toLocalDate();
+            for (TimeSegment seg : getSegmentsForDate(date, data)) {
+                LocalDateTime segStartDt = LocalDateTime.of(date, seg.start);
+                LocalDateTime segEndDt = LocalDateTime.of(date, seg.end);
+                if (!current.isBefore(segEndDt)) {
+                    continue;
+                }
+                if (current.isBefore(segStartDt)) {
+                    current = segStartDt;
+                }
+                long segAvailable = ChronoUnit.SECONDS.between(current, segEndDt);
+                if (remainingSeconds <= segAvailable) {
+                    return current.plusSeconds(remainingSeconds);
+                }
+                remainingSeconds -= segAvailable;
+                current = segEndDt;
             }
-            remainingSeconds -= availableSeconds;
-            current = getNextServiceTimeInternal(endOfDay, data);
+            current = getNextServiceTimeInternal(current, data);
         }
         return current;
     }

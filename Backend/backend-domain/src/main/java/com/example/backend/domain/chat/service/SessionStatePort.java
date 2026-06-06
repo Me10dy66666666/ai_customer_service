@@ -25,6 +25,17 @@ public interface SessionStatePort {
     /** 设置会话的用户信息（userId, intent） */
     void setUserInfo(String sessionId, Long userId, String intent);
 
+    // ============ 派发绑定 ============
+
+    /** 记录会话被派发给哪个客服 */
+    void setSessionDispatched(String sessionId, Long agentId);
+
+    /** 查询会话被派发给哪个客服，null 表示未派发 */
+    Long getSessionDispatched(String sessionId);
+
+    /** 清除会话的派发绑定 */
+    void clearSessionDispatched(String sessionId);
+
     // ============ 分布式锁 ============
 
     /**

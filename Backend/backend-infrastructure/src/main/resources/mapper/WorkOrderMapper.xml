@@ -73,6 +73,18 @@
     <select id="selectById" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE id = #{id}</select>
     <select id="selectAll" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time DESC</select>
     <select id="selectAllPaginated" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time DESC LIMIT #{limit} OFFSET #{offset}</select>
+    <select id="selectByHandlerOrUnassigned" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/> FROM work_orders
+        WHERE handler_id = #{handlerId}
+           OR (handler_id IS NULL AND status = #{pendingStatus})
+        ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countByHandlerOrUnassigned" resultType="int">
+        SELECT COUNT(*) FROM work_orders
+        WHERE handler_id = #{handlerId}
+           OR (handler_id IS NULL AND status = #{pendingStatus})
+    </select>
     <select id="countAll" resultType="int">SELECT COUNT(*) FROM work_orders</select>
     <select id="findBySessionId" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE session_id = #{sessionId} ORDER BY create_time ASC</select>
     <select id="countActiveBySessionId" resultType="int">SELECT COUNT(*) FROM work_orders WHERE session_id = #{sessionId} AND status IN (#{pendingStatus}, #{processingStatus})</select>

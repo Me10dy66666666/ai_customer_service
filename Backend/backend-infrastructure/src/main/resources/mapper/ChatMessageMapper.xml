@@ -125,4 +125,17 @@
         AND satisfaction IS NOT NULL
         AND create_time BETWEEN #{start} AND #{end}
     </select>
+
+    <select id="countAllAgentSessionsInMonth" resultType="java.util.Map">
+        SELECT sender_id AS agentId, COUNT(DISTINCT session_id) AS sessionCount
+        FROM chat_messages WHERE sender_type = 'AGENT'
+        AND create_time BETWEEN #{start} AND #{end}
+        GROUP BY sender_id ORDER BY sessionCount DESC
+    </select>
+
+    <select id="countDistinctAgentIds" resultType="long">
+        SELECT COUNT(DISTINCT sender_id) FROM chat_messages
+        WHERE sender_type = 'AGENT'
+        AND create_time BETWEEN #{start} AND #{end}
+    </select>
 </mapper>

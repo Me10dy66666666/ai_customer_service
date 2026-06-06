@@ -126,12 +126,24 @@ public class WorkOrderController {
 
     @GetMapping
     public Result<Map<String, Object>> list(@RequestParam(required = false) Long userId,
+                                             @RequestParam(required = false) Long handlerId,
                                              @RequestParam(defaultValue = "1") int page,
                                              @RequestParam(defaultValue = "50") int size) {
         if (userId != null) {
-            return Result.success(Map.of("list", workOrderApplicationService.findByUserId(userId), "total", workOrderApplicationService.findByUserId(userId).size()));
+            return Result.success(Map.of(
+                    "list", workOrderApplicationService.findByUserId(userId),
+                    "total", workOrderApplicationService.findByUserId(userId).size()
+            ));
         }
         int offset = (page - 1) * size;
+        if (handlerId != null) {
+            return Result.success(Map.of(
+                    "list", workOrderApplicationService.findByHandlerOrUnassigned(handlerId, offset, size),
+                    "total", workOrderApplicationService.countByHandlerOrUnassigned(handlerId),
+                    "page", page,
+                    "size", size
+            ));
+        }
         return Result.success(Map.of(
                 "list", workOrderApplicationService.findPaginated(offset, size),
                 "total", workOrderApplicationService.countAll(),

@@ -1,9 +1,10 @@
 import http from '@/core/axios'
 
 export const createWorkOrder = (workOrder) => http.post('/api/work-orders', workOrder)
-export const getWorkOrders = (userId, page = 1, size = 50) => {
+export const getWorkOrders = (userId, page = 1, size = 50, handlerId = null) => {
   const params = { page, size }
   if (userId) params.userId = userId
+  if (handlerId) params.handlerId = handlerId
   return http.get('/api/work-orders', { params })
 }
 export const getWorkOrder = (id) => http.get(`/api/work-orders/${id}`)

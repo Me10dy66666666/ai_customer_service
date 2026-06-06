@@ -52,6 +52,16 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
         return mapper.countActiveByHandlerId(handlerId, STATUS_PENDING, STATUS_PROCESSING);
     }
     @Override
+    public List<WorkOrder> findByHandlerOrUnassigned(Long handlerId, int offset, int limit) {
+        return mapper.selectByHandlerOrUnassigned(handlerId, STATUS_PENDING, offset, limit).stream().map(this::toDomain).toList();
+    }
+
+    @Override
+    public int countByHandlerOrUnassigned(Long handlerId) {
+        return mapper.countByHandlerOrUnassigned(handlerId, STATUS_PENDING);
+    }
+
+    @Override
     public boolean claimWorkOrder(Long id, Long handlerId) {
         return mapper.claimWorkOrder(id, handlerId, STATUS_PENDING, STATUS_PROCESSING) > 0;
     }

@@ -21,16 +21,19 @@ public class AgentSessionService {
         private final SessionStatePort sessionStatePort;
         private final AgentBroadcaster agentBroadcaster;
         private final ChatSummaryService chatSummaryService;
+        private final SessionDispatchService sessionDispatchService;
         private RedisStreamAdapter redisStreamAdapter;
 
         public ChatTransferBridge(MessageRouter messageRouter,
                                    SessionStatePort sessionStatePort,
                                    AgentBroadcaster agentBroadcaster,
-                                   ChatSummaryService chatSummaryService) {
+                                   ChatSummaryService chatSummaryService,
+                                   SessionDispatchService sessionDispatchService) {
             this.messageRouter = messageRouter;
             this.sessionStatePort = sessionStatePort;
             this.agentBroadcaster = agentBroadcaster;
             this.chatSummaryService = chatSummaryService;
+            this.sessionDispatchService = sessionDispatchService;
         }
 
         @Autowired(required = false)
@@ -70,6 +73,17 @@ public class AgentSessionService {
 
             log.info("Session {} → WAITING, userId={}, position={}, estimatedWait={}s",
                     sessionId, userId, position, estimatedWait);
+
+            // 技能匹配派发
+            Long dispatchedAgentId = sessionDispatchService.dispatch(sessionId, intent);
+            if (dispatchedAgentId != null) {
+                Map<String, Object> dispatchMsg = new LinkedHashMap<>();
+                dispatchMsg.put("type", "session_dispatched");
+                dispatchMsg.put("sessionId", sessionId);
+                dispatchMsg.put("agentId", dispatchedAgentId);
+                agentBroadcaster.broadcast(dispatchMsg);
+                log.info("Session {} dispatched notification sent to agent {}", sessionId, dispatchedAgentId);
+            }
 
             chatSummaryService.summarizeTransfer(sessionId, userId, summaryResult -> {
                 try {

@@ -80,7 +80,8 @@ export const useWorkOrderStore = defineStore('workorder', () => {
   const fetchAllWorkOrders = async (page = 1) => {
     loading.value = true
     try {
-      const res = await getWorkOrders(null, page, pageSize.value)
+      const auth = useAuthStore()
+      const res = await getWorkOrders(null, page, pageSize.value, auth.userId)
       if (res.data.code === 200) {
         const payload = res.data.data
         if (payload.list !== undefined) {

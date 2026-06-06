@@ -29,6 +29,12 @@ public interface WorkOrderMapper {
     List<Map<String, Object>> countWorkOrderTrendByDate(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     List<WorkOrder> selectAllPaginated(@Param("offset") int offset, @Param("limit") int limit);
     int countAll();
+    List<WorkOrder> selectByHandlerOrUnassigned(@Param("handlerId") Long handlerId,
+                                                 @Param("pendingStatus") String pendingStatus,
+                                                 @Param("offset") int offset,
+                                                 @Param("limit") int limit);
+    int countByHandlerOrUnassigned(@Param("handlerId") Long handlerId,
+                                    @Param("pendingStatus") String pendingStatus);
     List<WorkOrder> findBySessionId(@Param("sessionId") String sessionId);
     int countActiveBySessionId(@Param("sessionId") String sessionId,
                                @Param("pendingStatus") String pendingStatus,

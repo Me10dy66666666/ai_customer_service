@@ -206,6 +206,14 @@
             </select>
           </div>
           <div class="modal-field">
+            <label class="modal-label" for="wo-priority">紧急程度</label>
+            <select id="wo-priority" name="wo-priority" v-model="wo.newWorkOrder.priority" class="modal-input">
+              <option value="high">高</option>
+              <option value="medium" selected>中</option>
+              <option value="low">低</option>
+            </select>
+          </div>
+          <div class="modal-field">
             <label class="modal-label" for="wo-desc">描述</label>
             <textarea id="wo-desc" name="wo-desc" v-model="wo.newWorkOrder.description" rows="4" placeholder="请详细描述问题" class="modal-input"></textarea>
           </div>

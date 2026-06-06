@@ -21,6 +21,9 @@
         INSERT IGNORE INTO agent_skills (agent_id, skill_name, skill_level, is_active)
         VALUES (#{agentId}, #{skillName}, 'normal', 1)
     </insert>
+    <select id="findAgentIdsBySkill" resultType="java.lang.Long">
+        SELECT agent_id FROM agent_skills WHERE skill_name = #{skillName} AND is_active = 1
+    </select>
     <delete id="deleteByAgentId">
         DELETE FROM agent_skills WHERE agent_id = #{agentId}
     </delete>

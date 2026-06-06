@@ -76,6 +76,14 @@ public class WorkOrderApplicationService {
         return workOrderRepository.countAll();
     }
 
+    public List<WorkOrder> findByHandlerOrUnassigned(Long handlerId, int offset, int limit) {
+        return workOrderRepository.findByHandlerOrUnassigned(handlerId, offset, limit);
+    }
+
+    public int countByHandlerOrUnassigned(Long handlerId) {
+        return workOrderRepository.countByHandlerOrUnassigned(handlerId);
+    }
+
     public WorkOrder findById(Long id) {
         return workOrderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("WorkOrder not found: " + id));

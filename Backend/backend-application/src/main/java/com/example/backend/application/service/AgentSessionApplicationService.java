@@ -23,6 +23,7 @@ public class AgentSessionApplicationService {
     private final ChatMessageService chatMessageService;
     private final ConsultationLogRepository consultationLogRepository;
     private final ObjectMapper objectMapper;
+    private final SessionDispatchService sessionDispatchService;
 
     public List<AgentSessionContext> getActiveSessions(Long agentId) {
         Set<String> allSessionIds = new LinkedHashSet<>();
@@ -31,7 +32,11 @@ public class AgentSessionApplicationService {
         for (Map<String, Object> waiting : waitingList) {
             String sessionId = (String) waiting.get("sessionId");
             if (sessionId != null) {
-                allSessionIds.add(sessionId);
+                // 派发过滤：只保留未派发(公共池)或派发给当前客服的会话
+                Long dispatchedAgent = sessionDispatchService.getDispatchedAgent(sessionId);
+                if (agentId == null || dispatchedAgent == null || dispatchedAgent.equals(agentId)) {
+                    allSessionIds.add(sessionId);
+                }
             }
         }
 

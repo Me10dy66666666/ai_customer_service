@@ -114,7 +114,7 @@ public class AgentStatsApplicationService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
-        List<Map<String, Object>> rows = consultationLogMapper.countAllAgentSessionsInMonth(start, end);
+        List<Map<String, Object>> rows = chatMessageMapper.countAllAgentSessionsInMonth(start, end);
         List<Map<String, Object>> ranking = new ArrayList<>();
         int myRank = -1;
         int rank = 1;
@@ -315,7 +315,7 @@ public class AgentStatsApplicationService {
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
 
         // 查询活跃客服数量
-        long agentCount = consultationLogMapper.countDistinctAgentIds(start, end);
+        long agentCount = chatMessageMapper.countDistinctAgentIds(start, end);
 
         // 仅1名客服时，团队平均 = 该客服个人数据
         if (agentCount <= 1 && currentAgentId != null) {

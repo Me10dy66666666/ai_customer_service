@@ -36,4 +36,7 @@ public interface ChatMessageMapper {
 
     /** 全局平均满意度（不按客服筛选） */
     Double avgSatisfactionByDate(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    List<Map<String, Object>> countAllAgentSessionsInMonth(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    long countDistinctAgentIds(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

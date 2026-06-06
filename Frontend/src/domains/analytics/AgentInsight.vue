@@ -67,13 +67,78 @@
             </div>
           </div>
         </div>
-        <div class="ch-card">
-          <h3>团队排名</h3>
-          <div ref="chartRankRef" class="chart-box"></div>
+        <div class="ch-card rank-card" @click="showRankModal = true">
+          <div class="rank-card-head">
+            <h3>团队排名</h3>
+            <span class="rank-card-sub">点击查看完整排名 →</span>
+          </div>
+          <div class="rank-list">
+            <div class="rank-empty" v-if="rankItems.length === 0">暂无排名数据</div>
+            <div
+              v-for="(item, idx) in rankItems"
+              :key="item.agentId"
+              class="rank-row"
+              :class="{ 'rank-row--me': item.isMe }"
+              :style="{ animationDelay: (idx * 80) + 'ms' }"
+            >
+              <span class="rank-pos">
+                <span v-if="idx === 0" class="rank-medal">🥇</span>
+                <span v-else-if="idx === 1" class="rank-medal">🥈</span>
+                <span v-else-if="idx === 2" class="rank-medal">🥉</span>
+                <span v-else class="rank-num">{{ idx + 1 }}</span>
+              </span>
+              <span class="rank-name">{{ item.isMe ? '我' : ('客服#' + item.agentId) }}</span>
+              <span class="rank-sessions">{{ item.sessionCount }}<span class="rank-unit"> 次</span></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <Transition name="modal-fade">
+      <div v-if="showRankModal" class="rank-modal-overlay" @click.self="showRankModal = false">
+        <div class="rank-modal">
+          <div class="rank-modal-head">
+            <h3>🏆 完整团队排名</h3>
+            <button class="rank-modal-close" @click="showRankModal = false">✕</button>
+          </div>
+          <div class="rank-modal-body">
+            <table class="rank-full-table">
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>客服</th>
+                  <th>会话数</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="fullRankItems.length === 0">
+                  <td colspan="3" class="rank-empty-cell">暂无排名数据</td>
+                </tr>
+                <tr
+                  v-for="(item, idx) in fullRankItems"
+                  :key="item.agentId"
+                  :class="{ 'rank-tr--me': item.isMe }"
+                  :style="{ animationDelay: (idx * 50) + 'ms' }"
+                >
+                  <td class="rank-td-pos">
+                    <span v-if="idx === 0" class="rank-medal">🥇</span>
+                    <span v-else-if="idx === 1" class="rank-medal">🥈</span>
+                    <span v-else-if="idx === 2" class="rank-medal">🥉</span>
+                    <span v-else>{{ idx + 1 }}</span>
+                  </td>
+                  <td>{{ item.isMe ? '我（客服#' + item.agentId + '）' : '客服#' + item.agentId }}</td>
+                  <td>{{ item.sessionCount }} 次</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -111,7 +176,6 @@ function resetDateRange() {
 }
 
 const chartSessionsRef = ref(null)
-const chartRankRef = ref(null)
 const chartSatisfactionRef = ref(null)
 const chartWoStatusRef = ref(null)
 const chartWoSatisRef = ref(null)
@@ -174,6 +238,25 @@ const compareItems = computed(() => {
   })
 })
 
+const showRankModal = ref(false)
+
+const fullRankItems = computed(() => {
+  const ranking = store.teamRanking?.ranking
+  if (!ranking || ranking.length === 0) return []
+  const myId = authStore.userId
+  return ranking.map((r, idx) => ({
+    agentId: r.agentId,
+    sessionCount: r.sessionCount,
+    rank: idx + 1,
+    isMe: r.agentId === myId
+  }))
+})
+
+const rankItems = computed(() => {
+  // Show top 5 in the card
+  return fullRankItems.value.slice(0, 5)
+})
+
 function renderSessionChart() {
   if (!chartSessionsRef.value) return
   let chart = echarts.getInstanceByDom(chartSessionsRef.value)
@@ -222,51 +305,6 @@ function renderSessionChart() {
           }
         }
       }]
-    })
-  }, 0)
-}
-
-function renderRankChart() {
-  if (!chartRankRef.value) return
-  let chart = echarts.getInstanceByDom(chartRankRef.value)
-  if (!chart) {
-    chart = echarts.init(chartRankRef.value)
-    if (!charts.includes(chart)) charts.push(chart)
-  }
-  setTimeout(() => {
-    const ranking = store.teamRanking?.ranking
-    const myId = authStore.userId
-    
-    // 如果后端返回空ranking，构造仅含当前客服的默认排名
-    let effectiveRanking = ranking
-    if (!effectiveRanking || effectiveRanking.length === 0) {
-      if (myId) {
-        effectiveRanking = [{ agentId: myId, sessionCount: store.monthlyStats?.totalSessions || 0, rank: 1 }]
-      } else {
-        chart.setOption({ animation: false, title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#9aa8b4', fontSize: 13 } }, series: [] })
-        return
-      }
-    }
-    const names = []
-    const data = []
-    effectiveRanking.forEach(r => {
-      const n = r.agentId === myId ? '我' : ('客服#' + r.agentId)
-      names.push(n)
-      data.push({
-        value: r.sessionCount,
-        itemStyle: {
-          color: r.agentId === myId ? 'oklch(0.48 0.120 310)' : 'oklch(0.55 0.04 210)',
-          borderRadius: [0, 6, 6, 0]
-        }
-      })
-    })
-    chart.setOption({
-      animation: false,
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: params => params[0] ? `${params[0].name}: ${params[0].value} 次会话` : '' },
-      grid: { left: 60, right: 20, top: 10, bottom: 10 },
-      xAxis: { type: 'value', splitLine: { lineStyle: { color: '#edf1f4' } }, axisLabel: { color: '#7b8c9a', fontSize: 11 } },
-      yAxis: { type: 'category', data: names, axisLabel: { color: '#3a4f5f', fontSize: 11, fontWeight: 500 }, inverse: true },
-      series: [{ type: 'bar', barWidth: 14, data, label: { show: true, position: 'right', fontSize: 11, color: '#3a4f5f' } }]
     })
   }, 0)
 }
@@ -402,7 +440,6 @@ function renderAll() {
   setTimeout(() => { try { renderSatisfactionChart() } catch(e) { console.error('[AgentInsight] renderSatisfactionChart 异常:', e) } }, 150)
   setTimeout(() => { try { renderWoStatusChart() } catch(e) { console.error('[AgentInsight] renderWoStatusChart 异常:', e) } }, 200)
   setTimeout(() => { try { renderWoSatisChart() } catch(e) { console.error('[AgentInsight] renderWoSatisChart 异常:', e) } }, 250)
-  setTimeout(() => { try { renderRankChart() } catch(e) { console.error('[AgentInsight] renderRankChart 异常:', e) } }, 300)
 }
 
 const agentId = computed(() => authStore.userId)
@@ -509,5 +546,121 @@ onUnmounted(() => {
 .compare-fill { height: 100%; border-radius: 9999px; transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
 .compare-fill.me { background: oklch(0.48 0.120 310); }
 .compare-fill.avg { background: oklch(0.55 0.04 210); }
+
+/* ── Rank Card ── */
+.rank-card {
+  cursor: pointer;
+  transition: box-shadow var(--dur-fast) var(--ease-soft), border-color var(--dur-fast) var(--ease-soft);
+  overflow: hidden;
+}
+.rank-card:hover {
+  border-color: var(--brand);
+  box-shadow: 0 2px 16px oklch(0.48 0.120 310 / 0.10);
+}
+.rank-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--s-3);
+}
+.rank-card-sub {
+  font-size: var(--text-2xs); color: var(--ink-muted);
+  transition: color var(--dur-fast);
+}
+.rank-card:hover .rank-card-sub { color: var(--brand); }
+.rank-list {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  max-height: 260px; overflow: hidden;
+}
+.rank-empty {
+  text-align: center; padding: var(--s-8) 0;
+  font-size: var(--text-sm); color: var(--ink-muted);
+}
+.rank-row {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--radius-md);
+  animation: rankSlideIn 0.4s var(--ease-soft) both;
+  background: transparent;
+  transition: background var(--dur-fast);
+}
+.rank-row:hover { background: var(--base); }
+.rank-row--me {
+  background: var(--brand-pale);
+  font-weight: var(--weight-semibold);
+}
+.rank-row--me:hover { background: oklch(0.90 0.04 310 / 0.30); }
+@keyframes rankSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rank-pos { width: 28px; text-align: center; flex-shrink: 0; }
+.rank-medal { font-size: 16px; line-height: 1; }
+.rank-num   { font-size: var(--text-xs); color: var(--ink-muted); font-weight: var(--weight-medium); }
+.rank-name  { flex: 1; font-size: var(--text-sm); color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row--me .rank-name { color: var(--brand-deep); }
+.rank-sessions { font-size: var(--text-sm); color: var(--ink-soft); font-weight: var(--weight-semibold); flex-shrink: 0; }
+.rank-unit { font-size: var(--text-2xs); color: var(--ink-muted); font-weight: var(--weight-normal); }
+
+/* ── Rank Modal ── */
+.rank-modal-overlay {
+  position: fixed; inset: 0; z-index: 1100;
+  background: oklch(0.15 0.02 210 / 0.45);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.rank-modal {
+  background: var(--surface); border-radius: var(--radius-xl);
+  width: 90%; max-width: 480px; max-height: 70vh;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+.rank-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--s-5) var(--s-6);
+  border-bottom: 1px solid var(--border-light);
+}
+.rank-modal-head h3 {
+  font-family: var(--font-heading); font-size: var(--text-lg);
+  font-weight: var(--weight-semibold); color: var(--ink); margin: 0;
+}
+.rank-modal-close {
+  width: 32px; height: 32px; border: none; border-radius: 50%;
+  background: var(--base); color: var(--ink-muted);
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all var(--dur-fast);
+}
+.rank-modal-close:hover { background: var(--danger-soft); color: var(--danger); }
+.rank-modal-body { overflow-y: auto; padding: var(--s-4) var(--s-6); }
+.rank-full-table { width: 100%; border-collapse: collapse; }
+.rank-full-table th {
+  text-align: left; padding: var(--s-2) var(--s-3);
+  font-size: var(--text-2xs); font-weight: var(--weight-bold);
+  color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--border-light);
+}
+.rank-full-table td {
+  padding: var(--s-3);
+  font-size: var(--text-sm); color: var(--ink);
+  border-bottom: 1px solid var(--border-light);
+}
+.rank-tr--me td {
+  background: var(--brand-pale);
+  font-weight: var(--weight-semibold);
+  color: var(--brand-deep);
+}
+.rank-tr--me {
+  animation: rankSlideIn 0.3s var(--ease-soft) both;
+}
+.rank-td-pos { width: 48px; text-align: center; }
+.rank-empty-cell {
+  text-align: center; padding: var(--s-10) 0;
+  font-size: var(--text-sm); color: var(--ink-muted);
+}
+
+/* ── Modal Transition ── */
+.modal-fade-enter-active { transition: opacity 0.25s var(--ease-soft); }
+.modal-fade-leave-active { transition: opacity 0.15s var(--ease-soft); }
+.modal-fade-enter-from,
+.modal-fade-leave-to { opacity: 0; }
 
 </style>

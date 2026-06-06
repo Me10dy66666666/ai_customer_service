@@ -268,6 +268,17 @@ export const useAgentStore = defineStore('agent', () => {
           }
           break
 
+        case 'session_dispatched':
+          {
+            const sessionId = msg.payload?.sessionId || msg.sessionId
+            const agentId = msg.payload?.agentId || msg.agentId
+            const auth = useAuthStore()
+            if (sessionId && agentId === auth.userId) {
+              fetchPendingQueue()
+            }
+          }
+          break
+
         default:
           break
       }
@@ -332,7 +343,7 @@ export const useAgentStore = defineStore('agent', () => {
 
     if (!sessions || !sessions.length) {
       try {
-        const fallbackRes = await getPendingQueue()
+        const fallbackRes = await getPendingQueue(auth.userId)
         if (fallbackRes.data.code === 200) {
           const fallbackList = fallbackRes.data.data || []
           sessions = fallbackList.map(item => ({

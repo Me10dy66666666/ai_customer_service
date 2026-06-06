@@ -2,6 +2,7 @@ package com.example.backend.interfaces.controller;
 
 import com.example.backend.application.dto.AgentSessionContext;
 import com.example.backend.application.service.AgentSessionApplicationService;
+import com.example.backend.application.service.SessionDispatchService;
 import com.example.backend.common.Result;
 import com.example.backend.domain.chat.service.SessionStatePort;
 import com.example.backend.interfaces.security.RequireRole;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,16 +29,30 @@ public class AgentQueueController {
 
     private final SessionStatePort sessionStatePort;
     private final AgentSessionApplicationService agentSessionApplicationService;
+    private final SessionDispatchService sessionDispatchService;
 
     /**
      * 获取当前全部 WAITING 等待中的会话详情列表。
      * 每条记录包含 sessionId、userId、intent、position、estimatedWait。
      *
+     * @param agentId 可选客服ID，传入时只返回派发给该客服 + 未派发的公共池会话
      * @return 等待队列全量快照（按 FIFO 入队时间升序排列）
      */
     @GetMapping("/queue/pending")
-    public Result<List<Map<String, Object>>> getPendingQueue() {
+    public Result<List<Map<String, Object>>> getPendingQueue(@RequestParam(required = false) Long agentId) {
         List<Map<String, Object>> waitingSessions = sessionStatePort.getAllWaitingSessionDetails();
+        if (agentId != null && waitingSessions != null) {
+            List<Map<String, Object>> filtered = new ArrayList<>();
+            for (Map<String, Object> session : waitingSessions) {
+                String sid = (String) session.get("sessionId");
+                if (sid == null) continue;
+                Long dispatchedAgent = sessionDispatchService.getDispatchedAgent(sid);
+                if (dispatchedAgent == null || dispatchedAgent.equals(agentId)) {
+                    filtered.add(session);
+                }
+            }
+            waitingSessions = filtered;
+        }
         return Result.success(waitingSessions);
     }
 

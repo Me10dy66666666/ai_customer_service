@@ -419,6 +419,24 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         });
     }
 
+    /**
+     * 向指定客服发送消息。仅发给该客服的 WebSocket 连接，不发给其他客服。
+     *
+     * @param agentId 目标客服ID
+     * @param payload 消息内容
+     * @return true 表示至少发送给了一个在线连接
+     */
+    public boolean sendToAgent(Long agentId, Object payload) {
+        boolean sent = false;
+        for (var entry : agentSessions.entrySet()) {
+            if (agentId.equals(entry.getValue()) && entry.getKey().isOpen()) {
+                sendJson(entry.getKey(), payload);
+                sent = true;
+            }
+        }
+        return sent;
+    }
+
     private void startQueueListener(WebSocketSession session) {
         if (redisStreamAdapter == null) return;
         String consumerId = "agent-q-" + hostname + "-" + session.getId().substring(0, 8);
@@ -476,6 +494,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         if (listeners != null) listeners.forEach(Runnable::run);
 
         if (agentId != null) {
+            // Requeue sessions dispatched to this agent
+            List<Map<String, Object>> waitingSessions = sessionStatePort.getAllWaitingSessionDetails();
+            if (waitingSessions != null) {
+                for (Map<String, Object> waiting : waitingSessions) {
+                    String waitingSessionId = (String) waiting.get("sessionId");
+                    if (waitingSessionId == null) continue;
+                    Long dispatchedAgent = sessionStatePort.getSessionDispatched(waitingSessionId);
+                    if (agentId.equals(dispatchedAgent)) {
+                        sessionStatePort.clearSessionDispatched(waitingSessionId);
+                        log.info("Agent {} offline, requeued session {}", agentId, waitingSessionId);
+                    }
+                }
+            }
             sessionStatePort.markAgentOffline(agentId);
             log.info("Agent {} disconnected", agentId);
         }

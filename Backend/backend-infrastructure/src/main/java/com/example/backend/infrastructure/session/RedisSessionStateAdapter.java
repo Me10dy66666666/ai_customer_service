@@ -252,6 +252,25 @@ public class RedisSessionStateAdapter implements SessionStatePort {
         return expired;
     }
 
+    // ============ 派发绑定 ============
+
+    @Override
+    public void setSessionDispatched(String sessionId, Long agentId) {
+        redis.opsForHash().put("session:" + sessionId, "dispatchedAgentId", String.valueOf(agentId));
+    }
+
+    @Override
+    public Long getSessionDispatched(String sessionId) {
+        Object val = redis.opsForHash().get("session:" + sessionId, "dispatchedAgentId");
+        if (val == null) return null;
+        return Long.parseLong(val.toString());
+    }
+
+    @Override
+    public void clearSessionDispatched(String sessionId) {
+        redis.opsForHash().delete("session:" + sessionId, "dispatchedAgentId");
+    }
+
     // ============ AI 阻断开关 ============
 
     @Override
