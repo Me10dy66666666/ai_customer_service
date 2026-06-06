@@ -41,6 +41,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Slf4j
@@ -108,6 +109,8 @@ public class OcrProcessService {
         document.setStatus(KnowledgeDocument.STATUS_PENDING_OCR);
         document.setVersion(1);
         document.setIsLatest(true);
+        // 点击"上传并OCR识别"按钮即视为审核流程开始
+        document.setReviewStartedAt(LocalDateTime.now());
         document = documentRepository.save(document);
 
         // 生成 PNG 预览图（不阻塞 OCR 流程）

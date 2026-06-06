@@ -49,6 +49,8 @@ public interface WorkOrderMapper {
     Double avgEffectiveResolutionByAgent(@Param("agentId") Long agentId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     Double avgEffectiveResponseByDate(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     Double avgEffectiveResolutionByDate(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    Double avgFirstResponseSecondsByAgent(@Param("agentId") Long agentId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    Double avgFirstResponseSecondsByDate(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     int countTotalSlaWorkOrdersByAgent(@Param("agentId") Long agentId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     List<Map<String, Object>> countSlaTrendByDate(@Param("agentId") Long agentId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     Map<String, Object> countSlaOverview(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);

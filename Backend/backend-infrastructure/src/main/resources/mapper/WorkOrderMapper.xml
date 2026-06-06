@@ -93,7 +93,7 @@
     <select id="findByHandlerId" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE handler_id = #{handlerId}</select>
     <select id="findUnassigned" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE handler_id IS NULL AND status = #{pendingStatus} ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time ASC</select>
     <select id="countActiveByHandlerId" resultType="int">SELECT COUNT(*) FROM work_orders WHERE handler_id = #{handlerId} AND status IN (#{pendingStatus}, #{processingStatus})</select>
-    <update id="claimWorkOrder">UPDATE work_orders SET handler_id = #{handlerId}, status = #{processingStatus}, update_time = NOW() WHERE id = #{id} AND handler_id IS NULL AND status = #{pendingStatus}</update>
+    <update id="claimWorkOrder">UPDATE work_orders SET handler_id = #{handlerId}, status = #{processingStatus}, dispatched_at = NOW(), update_time = NOW() WHERE id = #{id} AND handler_id IS NULL AND status = #{pendingStatus}</update>
     <select id="countByStatusBetween" resultType="java.util.Map">
         SELECT status AS statusKey, COUNT(*) AS totalCount FROM work_orders WHERE create_time BETWEEN #{start} AND #{end} GROUP BY status
     </select>
@@ -249,5 +249,23 @@
         </if>
         GROUP BY rating
         ORDER BY rating DESC
+    </select>
+
+    <!-- 首次响应统计：基于分派时间→首次回复时间的差值 -->
+    <select id="avgFirstResponseSecondsByAgent" resultType="java.lang.Double">
+        SELECT AVG(TIMESTAMPDIFF(SECOND, dispatched_at, responded_at))
+        FROM work_orders
+        WHERE first_responder_id = #{agentId}
+        AND dispatched_at IS NOT NULL
+        AND responded_at IS NOT NULL
+        AND responded_at BETWEEN #{start} AND #{end}
+    </select>
+
+    <select id="avgFirstResponseSecondsByDate" resultType="java.lang.Double">
+        SELECT AVG(TIMESTAMPDIFF(SECOND, dispatched_at, responded_at))
+        FROM work_orders
+        WHERE dispatched_at IS NOT NULL
+        AND responded_at IS NOT NULL
+        AND responded_at BETWEEN #{start} AND #{end}
     </select>
 </mapper>

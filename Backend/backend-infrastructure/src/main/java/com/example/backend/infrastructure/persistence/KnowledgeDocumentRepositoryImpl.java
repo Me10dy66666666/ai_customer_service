@@ -166,6 +166,8 @@ public class KnowledgeDocumentRepositoryImpl implements KnowledgeDocumentReposit
         po.setArchivedAt(doc.getArchivedAt());
         po.setArchiveReason(doc.getArchiveReason());
         po.setReviewedBy(doc.getReviewedBy());
+        po.setReviewedAt(doc.getReviewedAt());
+        po.setReviewStartedAt(doc.getReviewStartedAt());
         return po;
     }
 }

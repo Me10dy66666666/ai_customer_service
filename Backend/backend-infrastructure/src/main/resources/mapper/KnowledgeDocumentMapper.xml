@@ -24,6 +24,8 @@
         <result column="archived_at" property="archivedAt"/>
         <result column="archive_reason" property="archiveReason"/>
         <result column="reviewed_by" property="reviewedBy"/>
+        <result column="reviewed_at" property="reviewedAt"/>
+        <result column="review_started_at" property="reviewStartedAt"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -32,25 +34,25 @@
         id, title, content, toc_json, file_type, original_file_url, preview_pdf_path, ocr_raw_json,
         dify_document_id, dify_sync_status, category, tags, status, enabled, version,
         is_latest, published_at, expired_at, archived_at, archive_reason,
-        reviewed_by, review_started_at, created_at, updated_at
+        reviewed_by, reviewed_at, review_started_at, created_at, updated_at
     </sql>
 
     <sql id="Brief_Column_List">
         id, title, file_type, original_file_url, preview_pdf_path,
         dify_document_id, dify_sync_status, category, tags, status, enabled, version,
         is_latest, published_at, expired_at, archived_at, archive_reason,
-        reviewed_by, review_started_at, created_at, updated_at
+        reviewed_by, reviewed_at, review_started_at, created_at, updated_at
     </sql>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO knowledge_documents (title, content, toc_json, file_type, original_file_url,
             preview_pdf_path, ocr_raw_json, dify_document_id, dify_sync_status, category, tags, status,
             enabled, version, is_latest, published_at, expired_at, archived_at, archive_reason,
-            reviewed_by, created_at, updated_at)
+            reviewed_by, review_started_at, reviewed_at, created_at, updated_at)
         VALUES (#{title}, #{content}, #{tocJson}, #{fileType}, #{originalFileUrl},
             #{previewPdfPath}, #{ocrRawJson}, #{difyDocumentId}, #{difySyncStatus}, #{category}, #{tags}, #{status},
             #{enabled}, #{version}, #{isLatest}, #{publishedAt}, #{expiredAt}, #{archivedAt}, #{archiveReason},
-            #{reviewedBy}, NOW(), NOW())
+            #{reviewedBy}, #{reviewStartedAt}, #{reviewedAt}, NOW(), NOW())
     </insert>
 
     <update id="update">
@@ -221,7 +223,6 @@
         SELECT AVG(TIMESTAMPDIFF(SECOND, review_started_at, reviewed_at))
         FROM knowledge_documents
         WHERE reviewed_by = #{reviewedBy}
-        AND review_started_at IS NOT NULL
         AND reviewed_at IS NOT NULL
         AND status IN ('PUBLISHED', 'ARCHIVED')
         AND reviewed_at BETWEEN #{start} AND #{end}

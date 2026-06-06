@@ -291,12 +291,6 @@ public class KnowledgeReviewApplicationService {
     public Map<String, Object> getReviewData(Long documentId) {
         KnowledgeDocument document = getDocumentDetail(documentId);
 
-        // 首次进入审核页时开始计时（若之前未设置过）
-        if (document.getReviewStartedAt() == null) {
-            document.setReviewStartedAt(LocalDateTime.now());
-            documentRepository.save(document);
-        }
-
         List<OcrSegment> segments = ocrSegmentRepository.findByDocumentIdOrderBySegmentIndex(documentId);
 
         Map<String, Object> result = new HashMap<>();

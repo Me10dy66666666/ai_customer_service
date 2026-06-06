@@ -168,6 +168,7 @@ CREATE TABLE `work_orders` (
   `sla_deadline` DATETIME COMMENT 'SLA解决时效截止时间',
   `response_deadline` DATETIME COMMENT '响应时效截止时间（客服首次回复DDL）',
   `responded_at` DATETIME COMMENT '客服实际首次回复时间',
+  `dispatched_at` DATETIME COMMENT '工单分派时间',
   `sla_paused` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'SLA是否已暂停',
   `effective_response_seconds` INT COMMENT '有效响应耗时（秒，扣除暂停和非工作时间）',
   `effective_resolution_seconds` INT COMMENT '有效解决耗时（秒，扣除暂停和非工作时间）',
@@ -584,3 +585,14 @@ AFTER `message_seq`;
 ALTER TABLE knowledge_documents 
 ADD COLUMN review_started_at DATETIME COMMENT '审核开始时间' 
 AFTER reviewed_at;
+
+-- work_orders 添加工单分派时间字段
+ALTER TABLE work_orders
+ADD COLUMN dispatched_at DATETIME COMMENT '工单分派时间'
+AFTER responded_at;
+
+-- 旧工单回填：create_time 作为分派时间的近似值
+UPDATE work_orders
+SET dispatched_at = create_time
+WHERE dispatched_at IS NULL
+  AND responded_at IS NOT NULL;
