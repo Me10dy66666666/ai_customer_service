@@ -44,8 +44,14 @@ public interface SessionStatePort {
      */
     boolean acquireClaimLock(String sessionId, Long agentId);
 
-    /** 释放会话的认领锁 */
-    void releaseClaimLock(String sessionId);
+    /**
+     * 释放会话的认领锁。
+     * 仅当锁的当前持有者与 agentId 匹配时才删除，防止误删其他线程的锁。
+     *
+     * @param sessionId 会话ID
+     * @param agentId   锁持有者ID，用于校验
+     */
+    void releaseClaimLock(String sessionId, Long agentId);
 
     // ============ 等待队列 (FIFO) ============
 

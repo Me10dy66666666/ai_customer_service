@@ -34,10 +34,12 @@
         AND create_time BETWEEN #{start} AND #{end}
     </select>
 
+    <!-- 首次响应统计：用户转人工(SYSTEM消息)→客服首次回复(AGENT消息)的耗时差 -->
     <select id="avgFirstResponseSecondsByAgentAndDate" resultType="java.lang.Double">
-        SELECT AVG(GREATEST(0, TIMESTAMPDIFF(SECOND, first_user_msg, first_agent_msg))) FROM (
+        SELECT AVG(GREATEST(0, TIMESTAMPDIFF(SECOND, transfer_time, first_agent_msg))) FROM (
             SELECT a.session_id,
-                (SELECT MIN(create_time) FROM chat_messages WHERE session_id = a.session_id AND sender_type = 'USER') AS first_user_msg,
+                (SELECT MIN(create_time) FROM chat_messages
+                 WHERE session_id = a.session_id AND sender_type = 'SYSTEM') AS transfer_time,
                 a.first_agent_msg
             FROM (
                 SELECT session_id, MIN(create_time) AS first_agent_msg
@@ -45,13 +47,14 @@
                 AND create_time BETWEEN #{start} AND #{end}
                 GROUP BY session_id
             ) a
-        ) t WHERE t.first_user_msg IS NOT NULL
+        ) t WHERE t.transfer_time IS NOT NULL
     </select>
 
     <select id="avgFirstResponseSecondsByDate" resultType="java.lang.Double">
-        SELECT AVG(TIMESTAMPDIFF(SECOND, first_user_msg, first_agent_msg)) FROM (
+        SELECT AVG(GREATEST(0, TIMESTAMPDIFF(SECOND, transfer_time, first_agent_msg))) FROM (
             SELECT a.session_id,
-                (SELECT MIN(create_time) FROM chat_messages WHERE session_id = a.session_id AND sender_type = 'USER') AS first_user_msg,
+                (SELECT MIN(create_time) FROM chat_messages
+                 WHERE session_id = a.session_id AND sender_type = 'SYSTEM') AS transfer_time,
                 a.first_agent_msg
             FROM (
                 SELECT session_id, MIN(create_time) AS first_agent_msg
@@ -59,7 +62,7 @@
                 AND create_time BETWEEN #{start} AND #{end}
                 GROUP BY session_id
             ) a
-        ) t WHERE t.first_user_msg IS NOT NULL
+        ) t WHERE t.transfer_time IS NOT NULL
     </select>
 
     <select id="countAgentChatTrendByDate" resultType="java.util.Map">

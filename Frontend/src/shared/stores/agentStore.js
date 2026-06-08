@@ -118,6 +118,11 @@ export const useAgentStore = defineStore('agent', () => {
           break
 
         case 'agent_queue_notify':
+          // 派发归属校验：已派发给特定客服的会话，非目标客服应跳过
+          const authStore = useAuthStore()
+          if (msg.dispatchedAgentId != null && msg.dispatchedAgentId !== authStore.userId) {
+            break
+          }
           const existing = queue.value.find(q => q.sessionId === msg.sessionId)
           if (existing) {
             existing.completed = false
@@ -275,6 +280,17 @@ export const useAgentStore = defineStore('agent', () => {
             const auth = useAuthStore()
             if (sessionId && agentId === auth.userId) {
               fetchPendingQueue()
+            }
+          }
+          break
+
+        case 'session_claimed':
+          // 只从非认领者的队列中移除该会话，认领者自己保留
+          {
+            const authStoreClaimed = useAuthStore()
+            if (msg.claimedByAgentId !== authStoreClaimed.userId) {
+              queue.value = queue.value.filter(q => q.sessionId !== msg.sessionId)
+              queueSize.value = queue.value.filter(q => !q.completed).length
             }
           }
           break
@@ -466,6 +482,29 @@ export const useAgentStore = defineStore('agent', () => {
     activeSessionId.value = sessionId
     if (entry) {
       activeMessages.value = (entry.messages || []).filter(m => m.from !== 'system')
+    }
+    // 已是 HUMAN 状态（已被当前客服认领），直接切换视图加载消息，不重复发送 claim
+    if (entry.status === 'HUMAN') {
+      try {
+        const msgRes = await getMessages(sessionId)
+        if (msgRes.data.code === 200) {
+          sessionHistory.value = msgRes.data.data
+          restoreSessionSummary(msgRes.data.data)
+          const typeMap = { USER: 'user', AGENT: 'agent', SYSTEM: 'system' }
+          activeMessages.value = msgRes.data.data
+            .filter(m => m.senderType !== 'SYSTEM')
+            .map(m => ({
+              from: typeMap[m.senderType] || 'system',
+              content: m.content,
+              time: m.createTime
+                ? new Date(m.createTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                : ''
+            }))
+        }
+      } catch (err) {
+        console.error('Failed to load session history:', err)
+      }
+      return
     }
     socket.value?.send(JSON.stringify({ action: 'claim', sessionId }))
     try {

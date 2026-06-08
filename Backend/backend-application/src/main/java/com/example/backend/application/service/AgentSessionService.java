@@ -42,13 +42,17 @@ public class AgentSessionService {
         }
 
         /**
-         * 用户发起转人工 — 加入 FIFO 等待队列并广播通知所有在线客服。
+         * 用户发起转人工 — 先技能匹配派发，再加入等待队列并广播通知。
+         * 派发结果包含在广播消息中，前端据此过滤非目标客服。
          */
         public void transferToHuman(String sessionId, Long userId, String intent) {
             if (sessionStatePort.isWaiting(sessionId)) {
                 log.info("Session {} already in waiting queue, skip duplicate", sessionId);
                 return;
             }
+
+            // 先技能匹配派发，再入队广播，确保 dispathedAgentId 可包含在通知中
+            Long dispatchedAgentId = sessionDispatchService.dispatch(sessionId, intent);
 
             messageRouter.enqueueWaiting(sessionId);
             sessionStatePort.setUserInfo(sessionId, userId, intent);
@@ -63,6 +67,7 @@ public class AgentSessionService {
             notify.put("intent", intent);
             notify.put("position", position);
             notify.put("estimatedWait", estimatedWait);
+            notify.put("dispatchedAgentId", dispatchedAgentId);
 
             agentBroadcaster.broadcast(notify);
 
@@ -71,11 +76,9 @@ public class AgentSessionService {
                         RedisStreamAdapter.AGENT_QUEUE_STREAM, notify);
             }
 
-            log.info("Session {} → WAITING, userId={}, position={}, estimatedWait={}s",
-                    sessionId, userId, position, estimatedWait);
+            log.info("Session {} → WAITING, userId={}, position={}, estimatedWait={}s, dispatchedAgentId={}",
+                    sessionId, userId, position, estimatedWait, dispatchedAgentId);
 
-            // 技能匹配派发
-            Long dispatchedAgentId = sessionDispatchService.dispatch(sessionId, intent);
             if (dispatchedAgentId != null) {
                 Map<String, Object> dispatchMsg = new LinkedHashMap<>();
                 dispatchMsg.put("type", "session_dispatched");

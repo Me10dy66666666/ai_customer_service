@@ -37,22 +37,36 @@ public class MessageRouter {
     }
 
     /**
-     * 客服认领会话（含分布式锁保护）。
+     * 客服认领会话（含分布式锁保护 + 状态前置校验）。
+     * 仅 WAITING 状态的会话可被认领，防止劫持已由其他客服接管的会话。
+     *
      * @return true=认领成功, false=已被其他客服认领或锁竞争失败
      */
     public boolean claimSession(String sessionId, Long agentId) {
+        // 前置校验：仅 WAITING 状态的会话允许认领
+        if (sessionStatePort.getState(sessionId) != SessionState.WAITING) {
+            log.warn("Session {} claim rejected: current state is not WAITING for agent {}", sessionId, agentId);
+            return false;
+        }
+
         if (!sessionStatePort.acquireClaimLock(sessionId, agentId)) {
             log.warn("Session {} claim lock failed for agent {}", sessionId, agentId);
             return false;
         }
         try {
+            // Double Check：获取锁后再次确认状态未变
+            if (sessionStatePort.getState(sessionId) != SessionState.WAITING) {
+                log.warn("Session {} state changed during lock acquisition, claim rejected for agent {}",
+                        sessionId, agentId);
+                return false;
+            }
             sessionStatePort.setState(sessionId, SessionState.HUMAN, agentId);
             sessionStatePort.removeFromWaitQueue(sessionId);
             sessionStatePort.addAgentActiveSession(agentId, sessionId);
             sessionStatePort.setAiBlocked(sessionId, true);
             return true;
         } finally {
-            sessionStatePort.releaseClaimLock(sessionId);
+            sessionStatePort.releaseClaimLock(sessionId, agentId);
         }
     }
 

@@ -4,6 +4,7 @@ import com.example.backend.domain.chat.model.SessionState;
 import com.example.backend.domain.chat.service.SessionStatePort;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -89,8 +90,16 @@ public class RedisSessionStateAdapter implements SessionStatePort {
     }
 
     @Override
-    public void releaseClaimLock(String sessionId) {
-        redis.delete(CLAIM_LOCK_PREFIX + sessionId);
+    public void releaseClaimLock(String sessionId, Long agentId) {
+        String lockKey = CLAIM_LOCK_PREFIX + sessionId;
+        String agentIdStr = agentId != null ? agentId.toString() : "";
+        // Lua 脚本原子校验持有者后再删除，防止锁过期后被其他线程误删
+        String script = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+        Long result = redis.execute(new DefaultRedisScript<>(script, Long.class),
+                List.of(lockKey), agentIdStr);
+        if (result != null && result == 0L) {
+            log.debug("Skip releasing claim lock for session {}, holder mismatch", sessionId);
+        }
     }
 
     // ============ 等待队列 FIFO ============

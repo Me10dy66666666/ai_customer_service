@@ -111,6 +111,7 @@ public class OcrProcessService {
         document.setIsLatest(true);
         // 点击"上传并OCR识别"按钮即视为审核流程开始
         document.setReviewStartedAt(LocalDateTime.now());
+
         document = documentRepository.save(document);
 
         // 生成 PNG 预览图（不阻塞 OCR 流程）
@@ -547,4 +548,5 @@ public class OcrProcessService {
     private BufferedImage convertOfficeToImage(File officeFile, Long documentId) {
         return null; // 不再使用，由 generatePreviewImage 统一处理
     }
+
 }

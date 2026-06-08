@@ -80,7 +80,7 @@ public class SessionDispatchService {
                     sessionStatePort.setSessionDispatched(sessionId, selectedAgent);
                     log.info("Session {} dispatched to agent {}", sessionId, selectedAgent);
                 } finally {
-                    sessionStatePort.releaseClaimLock(sessionId);
+                    sessionStatePort.releaseClaimLock(sessionId, selectedAgent);
                 }
             } else {
                 log.info("Session {} dispatch lock failed, already claimed", sessionId);
@@ -118,4 +118,5 @@ public class SessionDispatchService {
             default -> "通用";
         };
     }
+
 }

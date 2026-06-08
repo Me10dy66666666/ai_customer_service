@@ -36,7 +36,7 @@ public class AgentStatsApplicationService {
         LocalDateTime end = date.atTime(LocalTime.MAX);
 
         long sessionsHandled = chatMessageMapper.countDistinctSessionsByAgentAndDate(agentId, start, end);
-        Double avgResponseSeconds = workOrderMapper.avgFirstResponseSecondsByAgent(agentId, start, end);
+        Double avgResponseSeconds = chatMessageMapper.avgFirstResponseSecondsByAgentAndDate(agentId, start, end);
         Double avgSatisfaction = chatMessageMapper.avgSatisfactionByAgent(agentId, start, end);
 
         int responseCompliant = workOrderMapper.countResponseCompliantByAgent(agentId, start, end);
@@ -144,7 +144,7 @@ public class AgentStatsApplicationService {
 
         long totalSessions = chatMessageMapper.countDistinctSessionsByAgentAndDate(agentId, start, end);
         Double avgSatisfaction = chatMessageMapper.avgSatisfactionByAgent(agentId, start, end);
-        Double avgResponseSeconds = workOrderMapper.avgFirstResponseSecondsByAgent(agentId, start, end);
+        Double avgResponseSeconds = chatMessageMapper.avgFirstResponseSecondsByAgentAndDate(agentId, start, end);
 
         int responseCompliant = workOrderMapper.countResponseCompliantByAgent(agentId, start, end);
         int responseBreached = workOrderMapper.countResponseBreachedByAgent(agentId, start, end);
@@ -340,7 +340,7 @@ public class AgentStatsApplicationService {
                 ? Math.round(responseCompliant * 10000.0 / totalWorkOrders) / 100.0
                 : 0.0;
 
-        Double teamAvgFirstResponseSeconds = workOrderMapper.avgFirstResponseSecondsByDate(start, end);
+        Double teamAvgFirstResponseSeconds = chatMessageMapper.avgFirstResponseSecondsByDate(start, end);
         Double teamAvgEffectiveResponseSeconds = workOrderMapper.avgEffectiveResponseByDate(start, end);
 
         Map<String, Object> result = new LinkedHashMap<>();

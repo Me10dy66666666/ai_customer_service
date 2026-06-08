@@ -63,8 +63,8 @@
     <div class="admin-main">
       <div class="admin-stage">
         <router-view v-slot="{ Component }">
-          <transition name="page-fade" mode="out-in">
-            <component :is="Component" />
+          <transition name="page-fade">
+            <component :is="Component" :key="$route.fullPath" />
           </transition>
         </router-view>
       </div>
@@ -73,8 +73,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/shared/composables/useAuth'
 import { useAuthStore } from '@/shared/stores/authStore'
 

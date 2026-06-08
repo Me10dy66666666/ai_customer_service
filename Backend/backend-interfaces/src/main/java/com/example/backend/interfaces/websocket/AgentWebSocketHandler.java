@@ -138,6 +138,11 @@ public class AgentWebSocketHandler extends TextWebSocketHandler {
             sendToUser(sessionId, Map.of("type", "agent_joined",
                     "content", "客服已接入，为您服务"));
             chatMessageService.saveSystem(sessionId, "客服已接入，为您服务");
+            // 广播通知所有客服该会话已被认领，使其从本地队列中移除
+            agentBroadcaster.broadcast(Map.of(
+                    "type", "session_claimed",
+                    "sessionId", sessionId,
+                    "claimedByAgentId", agentId));
         } else {
             sendJson(session, Map.of("type", "claim_failed",
                     "sessionId", sessionId,
