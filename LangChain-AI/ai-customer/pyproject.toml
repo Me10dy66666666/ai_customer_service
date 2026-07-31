@@ -42,6 +42,10 @@ packages = ["src/ai_customer"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+  "skip_db: 跳过需要真实 MySQL 的测试",
+  "run_e2e: 标记需要端到端模拟的测试",
+]
 
 [tool.ruff]
 line-length = 100
