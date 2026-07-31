@@ -17,9 +17,9 @@ class VectorStore:
 
     def __init__(
         self,
-        collection_name: str = "my_knowledge_base",
-        persist_directory: str = "./chroma_db",
-        embedding_model: str = "paraphrase-multilingual-MiniLM-L12-v2",
+        collection_name: str ,
+        persist_directory: str ,
+        embedding_model: str ,
         distance_metric: str = "cosine",
         **kwargs
     ):

@@ -4,8 +4,9 @@ from ai_customer.core.base.mysqlConnector import get_engine
 from sqlalchemy import inspect
 from ai_customer.core.base.vector_store import VectorStore
 from sqlalchemy import select
-import dashscope
-from http import HTTPStatus
+
+
+from ai_customer.config.settings import settings
 
 def fetch_and_chunk():
     engine = get_engine()
@@ -20,16 +21,16 @@ def fetch_and_chunk():
     # 用字符串做 Key 最稳定、最易读。
     extractor_map = {
         "knowledge_documents": lambda row: f"文章标题：{row.title}\n文章内容：{row.content}\n分类：{row.category}\n发布时间：{row.plushed_at}\n审核人：{row.reviewed_by}",
-        "historical_orders": lambda row: f"订单id: {row.id}\n用户id:  {row.user_id}\n购买了:  {row.product_name}\n有关配置为: {row.product_model}\n数量为: {row.quantity}\n订单金额:  {row.amount} 元\n总价为:  {row.total_amount} 元\n订单状态:  {row.order_status}\n下单时间:  {row.create_time}。",
-        "chat_messages": lambda row: f"会话id:  {row.session_id}\n发送人:  {row.sender_type}\n发送人id: {row.sender_id}\n消息内容: {row.content}\n会话内消息序号：{row.message_seq}\n时间： {row.create_time}"
+        #"historical_orders": lambda row: f"订单id: {row.id}\n用户id:  {row.user_id}\n购买了:  {row.product_name}\n有关配置为: {row.product_model}\n数量为: {row.quantity}\n订单金额:  {row.amount} 元\n总价为:  {row.total_amount} 元\n订单状态:  {row.order_status}\n下单时间:  {row.create_time}。",
+        #"chat_messages": lambda row: f"会话id:  {row.session_id}\n发送人:  {row.sender_type}\n发送人id: {row.sender_id}\n消息内容: {row.content}\n会话内消息序号：{row.message_seq}\n时间： {row.create_time}"
     }
 
     vectorDB = VectorStore(
-        collection_name="ai_customer",
-        embedding_model="qwen3.7-text-embedding",
-        distance_metric="cosine",
-        persist_path="./chroma_db"
-    )
+    collection_name=settings.vector.collection_name,
+    embedding_model=settings.vector.EMBEDDING_MODEL,
+    persist_path=settings.vector.PERSIST_PATH,
+    distance_metric="cosine"
+)
 
     # 初始化容器
     all_ids = []

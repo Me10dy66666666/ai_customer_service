@@ -10,6 +10,18 @@ from typing import Optional
 
 # .env 文件相对于项目根目录（settings.py 向上两级：config -> ai_customer -> src -> 项目根）
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+class VectorSettings:
+    # 向量库业务配置（这里写你实际使用的值）
+    PERSIST_PATH = "./chroma_db"
+    COLLECTION_NAME = "ai_customer"
+    EMBEDDING_MODEL = "qwen3.7-text-embedding"  # 注意：这里保持和你入库时一致！
+    
+    # 检索配置
+    RETRIEVAL_K = 5  # 每次召回几个块
+    SIMILARITY_THRESHOLD = 0.7  # 相似度阈值（可选）
+    
+    
+
 
 class DatabaseSettings(BaseSettings):
     """数据库连接池配置，自动从 .env 读取 MYSQL_* 变量"""
@@ -47,11 +59,16 @@ class AppSettings(BaseSettings):
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
-    openai_model: str = Field(default="gpt-4.1-mini", alias="OPENAI_MODEL")
+    openai_model: str = Field(default="Deepseek-V4-Flash", alias="OPENAI_MODEL")
     openai_temperature: float = Field(default=0.2, alias="OPENAI_TEMPERATURE")
 
     # 🚀 关键：将数据库配置作为子属性嵌套进来
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+
+     # 🚀 添加向量库配置
+    vector: VectorSettings = Field(default_factory=VectorSettings)
+
+
 
     model_config = SettingsConfigDict(
         env_file=_ENV_FILE,
