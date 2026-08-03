@@ -1,0 +1,20 @@
+{
+  "name": "@enterprise-webagent/widget",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/enterprise-web-agent.js",
+  "types": "dist/main.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@enterprise-webagent/shared": "*",
+    "dompurify": "^3.2.6",
+    "marked": "^16.2.1"
+  },
+  "devDependencies": {
+    "vite": "^7.1.3"
+  }
+}
