@@ -3,7 +3,6 @@ import os
 from typing import List, Dict, Optional, Any, Union
 import chromadb
 from chromadb.utils import embedding_functions
-from chromadb.api.types import IncludeEnum
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -145,7 +144,7 @@ class VectorStore:
         n_results: int = 5,
         where: Optional[Dict] = None,
         where_document: Optional[Dict] = None,
-        include: Optional[List[IncludeEnum]] = None
+        include: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         执行语义查询，返回最相似的文档。

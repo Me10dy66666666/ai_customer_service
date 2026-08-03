@@ -18,7 +18,7 @@ def get_vector_store() -> VectorStore:
         )
     return _VECTOR_STORE
 
-@tool(name="query_knowledge", description="根据用户的提问从知识库中查询信息。")
+@tool("query_knowledge", description="根据用户的提问从知识库中查询信息。")
 def query_knowledge(query: str, top_k: int = 5) -> str:
     """
     从向量数据库中检索与查询最相关的知识片段。
@@ -31,25 +31,26 @@ def query_knowledge(query: str, top_k: int = 5) -> str:
         格式化的检索结果字符串，包含每个块的内容和元数据。
     """
     vector_store = get_vector_store()
-    
-    # 执行相似性搜索，query 方法是vector_store 的一个实例方法
-    # 如果返回的是 Document 对象列表，可直接使用；否则调整
-    docs = vector_store.query(query, k=top_k)
-    
-    if not docs:
+
+    # VectorStore.query() 返回字典 {ids, documents, metadatas, distances}，非 Document 列表
+    result = vector_store.query(query, n_results=top_k)
+
+    documents = result.get("documents") or []
+    metadatas = result.get("metadatas") or []
+
+    if not documents:
         return "未找到与您问题相关的信息。"
-    
+
     # 格式化输出：每个块包含来源和内容
     formatted_results = []
-    for i, doc in enumerate(docs, 1):
-        # doc 通常有 page_content 和 metadata 属性
-        source = doc.metadata.get("table_name", "未知表")
-        row_id = doc.metadata.get("row_id", "未知行")
-        content = doc.page_content.strip()
+    for i, content in enumerate(documents, 1):
+        meta = metadatas[i - 1] if i - 1 < len(metadatas) else {}
+        source = meta.get("table_name", "未知表") if meta else "未知表"
+        row_id = meta.get("row_id", "未知行") if meta else "未知行"
         formatted_results.append(
-            f"【结果 {i}】来源：{source}（{row_id}）\n{content}\n"
+            f"【结果 {i}】来源：{source}（{row_id}）\n{content.strip()}\n"
         )
-    
+
     return "\n".join(formatted_results)
 
 

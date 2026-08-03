@@ -20,19 +20,21 @@ def agent_node(state: CustomerServiceWorkflowState) -> CustomerServiceWorkflowSt
 def build_customer_service_workflow() -> StateGraph:
     """Compile the state graph for the customer service workflow."""
     graph_builder = StateGraph(CustomerServiceWorkflowState)
-    graph_builder.add_node(search_node)
-    graph_builder.add_node(agent_node)
-    graph_builder.add_edge(START, search_node)
-    graph_builder.add_edge(search_node, agent_node)
-    graph_builder.add_edge(agent_node, END)
+    graph_builder.add_node("search", search_node)
+    graph_builder.add_node("agent", agent_node)
+    graph_builder.add_edge(START, "search")
+    graph_builder.add_edge("search", "agent")
+    graph_builder.add_edge("agent", END)
     return graph_builder.compile()
 
 def run_customer_service_workflow(user_input: str, history_orders: str, userType: int) -> str:
     """Run the customer service workflow."""
     workflow = build_customer_service_workflow()
-    state = workflow.run(
-        user_input=user_input,
-        history_orders=history_orders,
-        userType=userType
+    final_state = workflow.invoke(
+        {
+            "user_input": user_input,
+            "history_orders": history_orders,
+            "userType": userType,
+        }
     )
-    return state["agent_response"]
+    return final_state["agent_response"]

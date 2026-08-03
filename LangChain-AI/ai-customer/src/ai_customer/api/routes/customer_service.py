@@ -19,14 +19,10 @@ class ChatResponse(BaseModel):
 # --- 👇 封装的具体位置：就是这个路由函数 ---
 @router.post("/customerService", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
-    # 1. 调用工作流，拿到完整的原始 State（字典）
-    final_state = run_support_workflow(request.user_input, request.history, request.userType)
+    # 1. 调用工作流，拿到最终回复
+    # run_support_workflow 内部已完成「分类 + 智能体回复」的拼接，直接返回字符串
+    reply_content = run_support_workflow(request.user_input)
 
-    # 2. 【封装动作 1】：安全提取对外数据
-    # 只取最终展示给用户的字段，决不允许 state 里的内部字段泄露出去
-    reply_content = final_state.get("agent_response", "服务繁忙，请稍后再试。")
-    
-
-    # 4. 【封装动作 2】：构造标准的 HTTP 响应返回
+    # 2. 【封装动作】：构造标准的 HTTP 响应返回
     # FastAPI 会自动将 ChatResponse 序列化为 JSON
     return ChatResponse(reply=reply_content)

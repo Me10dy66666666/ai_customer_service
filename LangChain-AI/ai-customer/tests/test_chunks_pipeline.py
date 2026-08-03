@@ -45,25 +45,27 @@ except ImportError:
     import chromadb.api.types as _types
     _types.IncludeEnum = IncludeEnum
 
-# 2. sentence-transformers 可能未安装 → 降级到 ONNX DefaultEmbeddingFunction
+# 2. sentence-transformers 未安装 → 降级到 ONNX DefaultEmbeddingFunction
 #    chromadb 1.5.x 的 SentenceTransformerEmbeddingFunction 在 import 时不会报错，
 #    但在实例化 __init__ 时会尝试 import sentence_transformers，所以必须提前 patch。
 import warnings
-from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+from importlib.util import find_spec
 
 
-class _FallbackSentenceTransformer(DefaultEmbeddingFunction):
-    """降级：忽略所有额外参数，使用 ONNX 默认嵌入模型。"""
-    def __init__(self, *args, **kwargs):
-        super().__init__()
+if find_spec("sentence_transformers") is None:
+    from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
+    class _FallbackSentenceTransformer(DefaultEmbeddingFunction):
+        """降级：忽略所有额外参数，使用 ONNX 默认嵌入模型。"""
+        def __init__(self, *args, **kwargs):
+            super().__init__()
 
-import chromadb.utils.embedding_functions as _ef_mod
-_ef_mod.SentenceTransformerEmbeddingFunction = _FallbackSentenceTransformer
-warnings.warn(
-    "sentence-transformers 未安装；已降级到 chromadb DefaultEmbeddingFunction（ONNX）。"
-    " 向量维度可能有差异，但测试逻辑不受影响。"
-)
+    import chromadb.utils.embedding_functions as _ef_mod
+    _ef_mod.SentenceTransformerEmbeddingFunction = _FallbackSentenceTransformer
+    warnings.warn(
+        "sentence-transformers 未安装；已降级到 chromadb DefaultEmbeddingFunction（ONNX）。"
+        " 向量维度可能有差异，但测试逻辑不受影响。"
+    )
 
 
 # ====================================================================
@@ -112,13 +114,12 @@ def test_db_connectivity():
 
 @pytest.mark.skip_db
 def test_table_reflection():
-    """验证 aiCustomer_tab 三张表能被 SQLAlchemy 成功反射，且包含预期列。"""
+    """验证 aiCustomer_tab 能成功反射知识库表，且包含预期列。"""
     from ai_customer.core.base.tables import aiCustomer_tab
 
     table_names = {t.name for t in aiCustomer_tab}
     assert "knowledge_documents" in table_names
-    assert "historical_orders" in table_names
-    assert "chat_messages" in table_names
+    # 注：historical_orders / chat_messages 在 tables.py 中被注释，不参与入库流程
 
     for table in aiCustomer_tab:
         cols = [c.name for c in table.columns]
@@ -469,12 +470,15 @@ def test_full_pipeline_with_mocks(sqlite_engine, tmp_path, monkeypatch):
     count = collection.count()
     assert count > 0, f"向量库中无数据，预期至少 1 条，实际 {count}"
 
-    # 验证三个表的数据都已入库
+    # 验证知识库表（knowledge_documents）的数据已入库。
+    # 注：historical_orders / chat_messages 的提取器在 chunks.py 中被注释，
+    #     按设计不参与切块入库，此处只断言知识库表。
     all_data = collection.get(limit=count)
     table_names = {m["table_name"] for m in all_data["metadatas"]}
     assert "knowledge_documents" in table_names, "缺少 knowledge_documents 数据"
-    assert "historical_orders" in table_names, "缺少 historical_orders 数据"
-    assert "chat_messages" in table_names, "缺少 chat_messages 数据"
+    assert table_names == {"knowledge_documents"}, (
+        f"预期仅知识库表入库，实际包含: {table_names}"
+    )
 
     # 验证 chunk_id 格式合规
     for doc_id in all_data["ids"]:

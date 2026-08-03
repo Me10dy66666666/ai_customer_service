@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from langchain.agents import AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate
+from langchain.agents import create_agent
 
 from ai_customer.config.settings import get_settings
 from ai_customer.llms.factory import build_chat_model
@@ -9,26 +8,25 @@ from ai_customer.prompts.system import CUSTOMER_SYSTEM_PROMPT
 from ai_customer.tools import get_knowledge_base_tools
 
 
-def build_customer_agent() -> AgentExecutor:
-    """Create a tool-calling agent backed by LangChain."""
+def build_customer_agent():
+    """Create a tool-calling agent backed by LangChain (langchain 1.x create_agent)."""
 
     settings = get_settings()
     model = build_chat_model(settings)
     tools = get_knowledge_base_tools()
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", CUSTOMER_SYSTEM_PROMPT),
-            ("human", "{input}"),
-            ("placeholder", "{agent_scratchpad}"),
-        ]
+    return create_agent(
+        model=model,
+        tools=tools,
+        system_prompt=CUSTOMER_SYSTEM_PROMPT,
     )
-    agent = create_tool_calling_agent(model, tools, prompt)
-    return AgentExecutor(agent=agent, tools=tools, verbose=False)
 
 
 def run_customer_agent(user_input: str, his_ords: str, user_type: int, context: str) -> str:
     """Run the customer agent and return the final assistant message."""
 
     agent = build_customer_agent()
-    response = agent.invoke({"input": user_input},{"history_orders":his_ords},{"user_type":user_type},{"context":context})
-    return str(response.get("output", "智能体未返回任何消息。"))
+    response = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
+    messages = response.get("messages", [])
+    if messages:
+        return str(messages[-1].content)
+    return "智能体未返回任何消息。"

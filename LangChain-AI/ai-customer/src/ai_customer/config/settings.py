@@ -19,6 +19,11 @@ class VectorSettings:
     # 检索配置
     RETRIEVAL_K = 5  # 每次召回几个块
     SIMILARITY_THRESHOLD = 0.7  # 相似度阈值（可选）
+
+    @property
+    def collection_name(self) -> str:
+        """小写别名，兼容 chunks.py / vector_search_tool.py 中 settings.vector.collection_name 的调用。"""
+        return self.COLLECTION_NAME
     
     
 
