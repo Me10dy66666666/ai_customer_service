@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent 管理中台 - 智能客服系统</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <el-container class="layout">
+      <!-- 侧边栏 -->
+      <el-aside width="220px" class="aside">
+        <div class="logo">
+          <h2>Agent 管理中台</h2>
+          <p>智能客服系统</p>
+        </div>
+        <el-menu :default-active="activeMenu" @select="handleMenuSelect" background-color="#1d1e2c" text-color="#a0aec0" active-text-color="#4c6ef5">
+          <el-menu-item index="dashboard">
+            <el-icon><Monitor /></el-icon>
+            <span>总览仪表盘</span>
+          </el-menu-item>
+          <el-menu-item index="agents">
+            <el-icon><Cpu /></el-icon>
+            <span>Agent 管理</span>
+          </el-menu-item>
+          <el-menu-item index="sessions">
+            <el-icon><ChatLineSquare /></el-icon>
+            <span>会话监控</span>
+          </el-menu-item>
+          <el-menu-item index="config">
+            <el-icon><Setting /></el-icon>
+            <span>系统配置</span>
+          </el-menu-item>
+        </el-menu>
+        <div class="aside-footer">
+          <p>v1.0.0 | {{ currentTime }}</p>
+        </div>
+      </el-aside>
+
+      <!-- 主内容区 -->
+      <el-container>
+        <el-header class="header">
+          <div class="header-left">
+            <h3>{{ pageTitle }}</h3>
+          </div>
+          <div class="header-right">
+            <el-tag :type="serverStatus === 'online' ? 'success' : 'danger'" size="small">
+              {{ serverStatus === 'online' ? '服务在线' : '服务离线' }}
+            </el-tag>
+            <el-button size="small" @click="refreshAll" :loading="loading" circle>
+              <el-icon><Refresh /></el-icon>
+            </el-button>
+            <span class="time-text">{{ fullTime }}</span>
+          </div>
+        </el-header>
+
+        <el-main>
+          <!-- 仪表盘 -->
+          <div v-if="activeMenu === 'dashboard'" v-loading="loading">
+            <!-- 指标卡片 -->
+            <el-row :gutter="20" class="metrics-row">
+              <el-col :span="6" v-for="card in summaryCards" :key="card.key">
+                <el-card shadow="hover" class="metric-card">
+                  <div class="metric-icon" :style="{ background: card.color }">
+                    <el-icon :size="24"><component :is="card.icon" /></el-icon>
+                  </div>
+                  <div class="metric-info">
+                    <div class="metric-value">{{ card.value }}</div>
+                    <div class="metric-label">{{ card.label }}</div>
+                    <div class="metric-sub">{{ card.sub }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+
+            <!-- 图表 -->
+            <el-row :gutter="20" class="chart-row">
+              <el-col :span="16">
+                <el-card shadow="hover">
+                  <template #header>
+                    <span>Agent 请求趋势（近 24 小时）</span>
+                  </template>
+                  <div ref="trendChartRef" class="chart-container"></div>
+                </el-card>
+              </el-col>
+              <el-col :span="8">
+                <el-card shadow="hover">
+                  <template #header>
+                    <span>Agent 分布</span>
+                  </template>
+                  <div ref="pieChartRef" class="chart-container"></div>
+                </el-card>
+              </el-col>
+            </el-row>
+
+            <!-- Agent 响应时间排行 -->
+            <el-card shadow="hover" class="table-card" style="margin-top: 20px">
+              <template #header>
+                <span>Agent 响应时间排行</span>
+              </template>
+              <el-table :data="sortedAgents" stripe size="small">
+                <el-table-column prop="name" label="Agent 名称" />
+                <el-table-column prop="type" label="类型" width="100">
+                  <template #default="{ row }">
+                    <el-tag size="small" :type="row.type === 'dify' ? 'warning' : 'primary'">
+                      {{ row.type }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="avgResponseTimeMs" label="平均响应时间" width="140" sortable>
+                  <template #default="{ row }">
+                    {{ row.avgResponseTimeMs }}ms
+                  </template>
+                </el-table-column>
+                <el-table-column prop="totalRequests" label="请求总数" width="100" />
+                <el-table-column prop="successRate" label="成功率" width="100">
+                  <template #default="{ row }">
+                    <el-progress :percentage="row.successRate" :color="row.successRate > 90 ? '#67c23a' : '#e6a23c'" :stroke-width="8" />
+                  </template>
+                </el-table-column>
+                <el-table-column prop="enabled" label="状态" width="80">
+                  <template #default="{ row }">
+                    <el-switch :model-value="row.enabled" size="small" disabled />
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-card>
+          </div>
+
+          <!-- Agent 管理 -->
+          <div v-if="activeMenu === 'agents'" v-loading="loading">
+            <div class="toolbar">
+              <el-button type="primary" @click="showAddAgentDialog = true">
+                <el-icon><Plus /></el-icon> 接入新 Agent
+              </el-button>
+              <el-button @click="collectMetrics">
+                <el-icon><DataAnalysis /></el-icon> 采集指标
+              </el-button>
+              <el-button @click="checkAllHealth" :loading="healthChecking">
+                <el-icon><Opportunity /></el-icon> 健康检查
+              </el-button>
+            </div>
+
+            <el-table :data="allAgents" stripe class="table-card" style="margin-top: 16px">
+              <el-table-column prop="id" label="Agent ID" width="200" />
+              <el-table-column prop="name" label="名称" width="200" />
+              <el-table-column prop="type" label="类型" width="100">
+                <template #default="{ row }">
+                  <el-tag size="small" :type="row.type === 'dify' ? 'warning' : 'primary'">
+                    {{ row.type === 'dify' ? 'Dify' : '自定义' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+              <el-table-column prop="enabled" label="启用" width="80">
+                <template #default="{ row }">
+                  <el-switch :model-value="row.enabled" size="small" disabled />
+                </template>
+              </el-table-column>
+              <el-table-column label="健康状态" width="100">
+                <template #default="{ row }">
+                  <el-tag v-if="healthStatus[row.id] === undefined" type="info" size="small">未知</el-tag>
+                  <el-tag v-else-if="healthStatus[row.id]?.healthy" type="success" size="small">正常</el-tag>
+                  <el-tooltip v-else :content="healthStatus[row.id]?.reason" placement="top">
+                    <el-tag type="danger" size="small">异常</el-tag>
+                  </el-tooltip>
+                </template>
+              </el-table-column>
+              <el-table-column label="指标" width="200">
+                <template #default="{ row }">
+                  <span v-if="metricsMap[row.id]">
+                    QPS: {{ metricsMap[row.id].totalRequests }} |
+                    RT: {{ metricsMap[row.id].avgResponseTimeMs }}ms
+                  </span>
+                  <span v-else class="text-muted">暂无数据</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="140" fixed="right">
+                <template #default="{ row }">
+                  <el-button size="small" @click="showAgentDetail(row)">详情</el-button>
+                  <el-button size="small" type="danger" @click="removeAgent(row)" :disabled="row.type !== 'custom'">移除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <!-- 接入新 Agent 对话框 -->
+            <el-dialog v-model="showAddAgentDialog" title="接入新 Agent" width="560px">
+              <el-form :model="newAgentForm" label-width="100px">
+                <el-form-item label="Agent 名称">
+                  <el-input v-model="newAgentForm.name" placeholder="请输入 Agent 名称" />
+                </el-form-item>
+                <el-form-item label="Agent 类型">
+                  <el-radio-group v-model="newAgentForm.type">
+                    <el-radio value="custom">自定义 Agent</el-radio>
+                    <el-radio value="dify">Dify Agent</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+                <el-form-item label="描述">
+                  <el-input v-model="newAgentForm.description" type="textarea" :rows="2" placeholder="请输入描述" />
+                </el-form-item>
+                <template v-if="newAgentForm.type === 'dify'">
+                  <el-form-item label="Dify API Key">
+                    <el-input v-model="newAgentForm.difyApiKey" type="password" show-password placeholder="请输入 Dify API Key" />
+                  </el-form-item>
+                  <el-form-item label="Dify Base URL">
+                    <el-input v-model="newAgentForm.difyBaseUrl" placeholder="https://api.dify.ai/v1" />
+                  </el-form-item>
+                  <el-form-item label="工作流端点">
+                    <el-input v-model="newAgentForm.difyWorkflowEndpoint" placeholder="/chat-messages" />
+                  </el-form-item>
+                </template>
+                <template v-if="newAgentForm.type === 'custom'">
+                  <el-form-item label="模型模式">
+                    <el-select v-model="newAgentForm.customModelMode">
+                      <el-option value="mock" label="Mock (开发模式)" />
+                      <el-option value="openai-compatible" label="OpenAI 兼容" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="模型名称">
+                    <el-input v-model="newAgentForm.customModelName" placeholder="gpt-4.1-mini" />
+                  </el-form-item>
+                </template>
+              </el-form>
+              <template #footer>
+                <el-button @click="showAddAgentDialog = false">取消</el-button>
+                <el-button type="primary" @click="addAgent">确认接入</el-button>
+              </template>
+            </el-dialog>
+
+            <!-- Agent 详情对话框 -->
+            <el-dialog v-model="showDetailDialog" :title="'Agent 详情: ' + detailAgent?.name" width="700px">
+              <template v-if="detailAgent">
+                <el-descriptions :column="2" border>
+                  <el-descriptions-item label="Agent ID">{{ detailAgent.id }}</el-descriptions-item>
+                  <el-descriptions-item label="类型">{{ detailAgent.type }}</el-descriptions-item>
+                  <el-descriptions-item label="描述" :span="2">{{ detailAgent.description || '无' }}</el-descriptions-item>
+                  <el-descriptions-item label="启用状态">
+                    <el-tag :type="detailAgent.enabled ? 'success' : 'danger'">
+                      {{ detailAgent.enabled ? '已启用' : '已禁用' }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="创建时间">{{ detailAgent.createdAt }}</el-descriptions-item>
+                  <el-descriptions-item label="更新时间" :span="2">{{ detailAgent.updatedAt }}</el-descriptions-item>
+                </el-descriptions>
+
+                <h4 style="margin-top: 20px">运行指标</h4>
+                <el-table :data="[detailMetrics]" stripe size="small" v-if="detailMetrics">
+                  <el-table-column prop="totalRequests" label="请求总数" />
+                  <el-table-column prop="successCount" label="成功数" />
+                  <el-table-column prop="fallbackCount" label="降级数" />
+                  <el-table-column label="成功率">
+                    <template #default>
+                      {{ detailMetrics.successRate }}%
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="avgResponseTimeMs" label="平均响应(ms)" />
+                  <el-table-column prop="lastActiveAt" label="最后活跃" />
+                </el-table>
+                <el-empty v-else description="暂无指标数据" :image-size="60" />
+
+                <h4 style="margin-top: 20px">指标趋势</h4>
+                <div ref="detailChartRef" class="chart-container" style="height: 250px"></div>
+              </template>
+            </el-dialog>
+          </div>
+
+          <!-- 会话监控 -->
+          <div v-if="activeMenu === 'sessions'" v-loading="loading">
+            <el-table :data="sessions" stripe class="table-card">
+              <el-table-column prop="sessionId" label="会话 ID" width="280" show-overflow-tooltip />
+              <el-table-column prop="userId" label="用户 ID" width="120" />
+              <el-table-column prop="userType" label="用户类型" width="100">
+                <template #default="{ row }">
+                  <el-tag size="small" :type="row.userType === 0 ? 'info' : ''">
+                    {{ row.userType === 0 ? '游客' : '会员' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="chatHistory.length" label="消息数" width="80" />
+              <el-table-column prop="aiBlocked" label="AI 阻断" width="80">
+                <template #default="{ row }">
+                  <el-tag size="small" :type="row.aiBlocked ? 'danger' : 'success'">
+                    {{ row.aiBlocked ? '是' : '否' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="创建时间" width="180" />
+              <el-table-column prop="updatedAt" label="更新时间" width="180" />
+              <el-table-column label="操作" width="100">
+                <template #default="{ row }">
+                  <el-button size="small" type="danger" @click="deleteSession(row.sessionId)">清除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-if="sessions.length === 0" description="暂无活跃会话" />
+          </div>
+
+          <!-- 系统配置 -->
+          <div v-if="activeMenu === 'config'" v-loading="loading">
+            <el-descriptions :column="1" border class="config-card" v-if="configData">
+              <el-descriptions-item label="服务端口">{{ configData.port }}</el-descriptions-item>
+              <el-descriptions-item label="模型模式">{{ configData.modelMode }}</el-descriptions-item>
+              <el-descriptions-item label="模型名称">{{ configData.openAiModel }}</el-descriptions-item>
+              <el-descriptions-item label="OpenAI API Key">{{ configData.openAiApiKey }}</el-descriptions-item>
+              <el-descriptions-item label="Dify Base URL">{{ configData.difyBaseUrl }}</el-descriptions-item>
+              <el-descriptions-item label="Dify Chat Key">{{ configData.difyApiKeys?.chat }}</el-descriptions-item>
+              <el-descriptions-item label="Dify Knowledge Key">{{ configData.difyApiKeys?.knowledge }}</el-descriptions-item>
+              <el-descriptions-item label="Dify Intervention Key">{{ configData.difyApiKeys?.intervention }}</el-descriptions-item>
+              <el-descriptions-item label="Dify Workorder Key">{{ configData.difyApiKeys?.workorder }}</el-descriptions-item>
+              <el-descriptions-item label="知识检索上限">{{ configData.knowledge?.searchLimit }}</el-descriptions-item>
+              <el-descriptions-item label="会话 TTL">{{ configData.session?.ttlSeconds }}秒</el-descriptions-item>
+              <el-descriptions-item label="最大并发 Agent">{{ configData.session?.maxConcurrentAgents }}</el-descriptions-item>
+              <el-descriptions-item label="日志级别">{{ configData.log?.level }}</el-descriptions-item>
+            </el-descriptions>
+            <el-empty v-else description="无法获取配置" />
+          </div>
+        </el-main>
+      </el-container>
+    </el-container>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

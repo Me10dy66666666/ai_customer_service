@@ -1,0 +1,234 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0f1021;
+  color: #e2e8f0;
+}
+
+.layout {
+  height: 100vh;
+}
+
+/* 侧边栏 */
+.aside {
+  background: #1d1e2c !important;
+  border-right: 1px solid #2d2e3e;
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  padding: 24px 20px 16px;
+  text-align: center;
+  border-bottom: 1px solid #2d2e3e;
+}
+.logo h2 {
+  font-size: 18px;
+  color: #fff;
+  font-weight: 700;
+}
+.logo p {
+  font-size: 12px;
+  color: #718096;
+  margin-top: 4px;
+}
+
+.aside-footer {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid #2d2e3e;
+  text-align: center;
+}
+.aside-footer p {
+  font-size: 11px;
+  color: #718096;
+}
+
+.el-menu {
+  border-right: none !important;
+}
+.el-menu-item {
+  font-size: 14px !important;
+}
+
+/* 头部 */
+.header {
+  background: #1a1b2e !important;
+  border-bottom: 1px solid #2d2e3e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px !important;
+  height: 56px !important;
+}
+.header-left h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.time-text {
+  font-size: 12px;
+  color: #718096;
+}
+
+/* 主区域 */
+.el-main {
+  background: #0f1021 !important;
+  padding: 24px !important;
+}
+
+/* 指标卡片 */
+.metrics-row {
+  margin-bottom: 20px;
+}
+.metric-card {
+  background: #1a1b2e !important;
+  border: 1px solid #2d2e3e !important;
+  border-radius: 12px !important;
+}
+.metric-card .el-card__body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px !important;
+}
+.metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.metric-info {
+  flex: 1;
+  min-width: 0;
+}
+.metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+}
+.metric-label {
+  font-size: 13px;
+  color: #a0aec0;
+  margin-top: 2px;
+}
+.metric-sub {
+  font-size: 11px;
+  color: #718096;
+  margin-top: 2px;
+}
+
+/* 图表区域 */
+.chart-row {
+  margin-bottom: 20px;
+}
+.chart-container {
+  width: 100%;
+  height: 320px;
+}
+.el-card {
+  background: #1a1b2e !important;
+  border: 1px solid #2d2e3e !important;
+  border-radius: 12px !important;
+  color: #e2e8f0 !important;
+}
+.el-card__header {
+  border-bottom: 1px solid #2d2e3e !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+.el-card__body {
+  padding: 16px !important;
+}
+
+/* 表格 */
+.table-card {
+  margin-top: 0;
+}
+.el-table {
+  --el-table-bg-color: #1a1b2e !important;
+  --el-table-tr-bg-color: #1a1b2e !important;
+  --el-table-header-bg-color: #232438 !important;
+  --el-table-border-color: #2d2e3e !important;
+  --el-table-text-color: #e2e8f0 !important;
+  --el-table-header-text-color: #a0aec0 !important;
+  --el-table-row-hover-bg-color: #232438 !important;
+}
+
+/* 对话框 */
+.el-dialog {
+  background: #1a1b2e !important;
+  border: 1px solid #2d2e3e !important;
+}
+.el-dialog__title {
+  color: #fff !important;
+}
+.el-dialog__body {
+  color: #e2e8f0 !important;
+}
+
+/* 表单 */
+.el-form-item__label {
+  color: #a0aec0 !important;
+}
+.el-input__wrapper {
+  background: #232438 !important;
+  border-color: #2d2e3e !important;
+  box-shadow: none !important;
+}
+.el-input__inner {
+  color: #e2e8f0 !important;
+}
+.el-textarea__inner {
+  background: #232438 !important;
+  border-color: #2d2e3e !important;
+  color: #e2e8f0 !important;
+}
+.el-select .el-input__wrapper {
+  background: #232438 !important;
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+/* 描述列表 */
+.config-card .el-descriptions__label {
+  background: #232438 !important;
+  color: #a0aec0 !important;
+}
+.config-card .el-descriptions__content {
+  background: #1a1b2e !important;
+  color: #e2e8f0 !important;
+}
+
+/* Element Plus Dialogs overlay */
+.el-overlay {
+  background-color: rgba(0,0,0,0.5) !important;
+}
+
+/* Menu active */
+.el-menu-item.is-active {
+  background: #232438 !important;
+}
+
+.text-muted {
+  color: #718096;
+}

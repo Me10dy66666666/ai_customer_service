@@ -73,6 +73,16 @@ dify:
     api-key: ${DIFY_WORKORDER_KEY}
     workflow: /workflows/run
 
+# TS Agent 配置（切换为自研 TypeScript Agent 时使用）
+# 切换方式: 设置环境变量 AGENT_PROVIDER=ts-agent
+ts-agent:
+  base-url: ${TS_AGENT_BASE_URL:http://localhost:3001}
+  api-key: ${TS_AGENT_API_KEY:}
+
+# Agent 提供者选择: dify（默认）| ts-agent
+agent:
+  provider: ${AGENT_PROVIDER:dify}
+
 app:
   cache:
     redis:

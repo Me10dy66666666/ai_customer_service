@@ -1,4 +1,5 @@
-export { WebAgentWidget } from "./web-agent-widget";
+import { WebAgentWidget } from "./web-agent-widget.js";
+export { WebAgentWidget };
 
 const TAG_NAME = WebAgentWidget.elementName;
 

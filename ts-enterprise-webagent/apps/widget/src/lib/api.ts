@@ -1,8 +1,10 @@
-import type { ChatRequest, ChatResponse } from "./types";
+import type { ChatRequest, ChatResponse } from "./types.js";
 
 const DEFAULT_TIMEOUT_MS = 60_000;
+/** 服务端默认端点 */
+const DEFAULT_API_ENDPOINT = "/api/v1/customer-agent/messages";
 
-/** 防御性 HTTP 客户端，仅封装 webagent 单次调用。 */
+/** 防御性 HTTP 客户端，对齐 Server 的 camelCase 契约 */
 export async function sendChatMessage(
   apiEndpoint: string,
   body: ChatRequest,
@@ -11,7 +13,6 @@ export async function sendChatMessage(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
-  // 外部传入的 signal 与内部超时联动
   const linkedSignal = signal
     ? combineAbortSignals(signal, controller.signal)
     : controller.signal;
@@ -34,14 +35,6 @@ export async function sendChatMessage(
     const data: unknown = await response.json();
 
     if (!isChatResponse(data)) {
-      // 容错：如果不是标准格式，尝试把 reply 取出来
-      if (
-        typeof data === "object" &&
-        data !== null &&
-        "reply" in data
-      ) {
-        return { reply: String((data as Record<string, unknown>).reply) };
-      }
       throw new Error("[webagent] API 返回了非预期格式的响应");
     }
 
@@ -51,10 +44,14 @@ export async function sendChatMessage(
   }
 }
 
+/**
+ * 类型守卫：检查响应是否符合 ChatResponse 格式
+ * 对齐 agentMessageResponseSchema
+ */
 function isChatResponse(value: unknown): value is ChatResponse {
   if (typeof value !== "object" || value === null) return false;
   const obj = value as Record<string, unknown>;
-  return typeof obj.reply === "string";
+  return typeof obj.answer === "string" && typeof obj.sessionId === "string";
 }
 
 /** 合并两个 AbortSignal：任一触发则整体 abort。 */
@@ -69,3 +66,5 @@ function combineAbortSignals(
   if (a.aborted || b.aborted) controller.abort();
   return controller.signal;
 }
+
+export { DEFAULT_API_ENDPOINT };

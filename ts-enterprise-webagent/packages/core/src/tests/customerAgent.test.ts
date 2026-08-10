@@ -1,12 +1,12 @@
 /**
  * @enterprise-webagent/core 单元测试
  *
- * 验证 CustomerAgentModule 编排的正确性。
+ * 验证 CustomCustomerAgent 编排的正确性。
  */
 import { describe, it, expect } from "vitest";
-import { CustomerAgentModule } from "../orchestration/customerAgent";
+import { CustomCustomerAgent } from "../agents/CustomCustomerAgent";
 import type { ChatModel, KnowledgeRetriever, Logger } from "../adapters/contracts";
-import type { KnowledgeSource } from "@enterprise-webagent/shared";
+import type { KnowledgeSource, AgentMetadata } from "@enterprise-webagent/shared";
 
 /* ── 桩实现 ── */
 
@@ -30,6 +30,18 @@ function createMockRetriever(sources: KnowledgeSource[]): KnowledgeRetriever {
   };
 }
 
+function createTestMetadata(): AgentMetadata {
+  return {
+    id: "test-agent",
+    name: "测试 Agent",
+    type: "custom",
+    description: "单元测试用 Agent",
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 const SEED_SOURCE: KnowledgeSource = {
   id: "doc-1",
   title: "订单退款政策",
@@ -40,9 +52,9 @@ const SEED_SOURCE: KnowledgeSource = {
 
 /* ── 测试 ── */
 
-describe("CustomerAgentModule", () => {
+describe("CustomCustomerAgent", () => {
   it("should return a knowledge-rich reply when retriever match found", async () => {
-    const agent = new CustomerAgentModule({
+    const agent = new CustomCustomerAgent(createTestMetadata(), {
       chatModel: createMockModel("桩回复：已根据知识库解答。"),
       knowledgeRetriever: createMockRetriever([SEED_SOURCE]),
       logger: createNullLogger(),
@@ -68,7 +80,7 @@ describe("CustomerAgentModule", () => {
       },
     };
 
-    const agent = new CustomerAgentModule({
+    const agent = new CustomCustomerAgent(createTestMetadata(), {
       chatModel: model,
       knowledgeRetriever: createMockRetriever([SEED_SOURCE]),
       logger: createNullLogger(),
@@ -93,7 +105,7 @@ describe("CustomerAgentModule", () => {
       },
     };
 
-    const agent = new CustomerAgentModule({
+    const agent = new CustomCustomerAgent(createTestMetadata(), {
       chatModel: model,
       knowledgeRetriever: createMockRetriever([SEED_SOURCE]),
       logger: createNullLogger(),
@@ -109,7 +121,7 @@ describe("CustomerAgentModule", () => {
   });
 
   it("should extract work order action from user input keywords", async () => {
-    const agent = new CustomerAgentModule({
+    const agent = new CustomCustomerAgent(createTestMetadata(), {
       chatModel: createMockModel("桩回复"),
       knowledgeRetriever: createMockRetriever([SEED_SOURCE]),
       logger: createNullLogger(),
@@ -128,7 +140,7 @@ describe("CustomerAgentModule", () => {
   });
 
   it("should return no actions when user input does not mention work orders", async () => {
-    const agent = new CustomerAgentModule({
+    const agent = new CustomCustomerAgent(createTestMetadata(), {
       chatModel: createMockModel("桩回复"),
       knowledgeRetriever: createMockRetriever([SEED_SOURCE]),
       logger: createNullLogger(),
@@ -144,7 +156,7 @@ describe("CustomerAgentModule", () => {
   });
 
   it("should fall back gracefully when knowledge base is empty", async () => {
-    const agent = new CustomerAgentModule({
+    const agent = new CustomCustomerAgent(createTestMetadata(), {
       chatModel: createMockModel("不会走到这里"),
       knowledgeRetriever: createMockRetriever([]),
       logger: createNullLogger(),

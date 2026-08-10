@@ -1,6 +1,6 @@
-import type { AgentMessage, WidgetConfig, WorkOrderAction } from "./lib/types";
-import { sendChatMessage } from "./lib/api";
-import { renderMarkdown, generateId } from "./lib/sanitizer";
+import type { AgentMessage, WidgetConfig, WorkOrderAction } from "./lib/types.js";
+import { sendChatMessage, DEFAULT_API_ENDPOINT } from "./lib/api.js";
+import { renderMarkdown, generateId } from "./lib/sanitizer.js";
 
 /* ── 常量 ── */
 const STYLES = /* css */ `
@@ -368,16 +368,21 @@ export class WebAgentWidget extends HTMLElement {
     this.config = {
       apiEndpoint:
         this.getAttribute("api-endpoint") ??
-        "http://localhost:3400/api/v1/agent/customerService",
+        "http://localhost:3001/api/v1/customer-agent/messages",
       placeholder: this.getAttribute("placeholder") ?? "输入你的问题…",
-      welcomeMessage: this.getAttribute("welcome-message") ?? undefined,
       userType: Number(this.getAttribute("user-type")) || 0,
-      themeColor: this.getAttribute("theme-color") ?? undefined,
       historyOrders: this.getAttribute("history-orders") ?? "",
     };
-    const color = this.config.themeColor;
-    if (color) {
-      this.style.setProperty("--wa-brand", color);
+    const themeColor = this.getAttribute("theme-color");
+    if (themeColor) {
+      this.config.themeColor = themeColor;
+    }
+    const welcome = this.getAttribute("welcome-message");
+    if (welcome) {
+      this.config.welcomeMessage = welcome;
+    }
+    if (themeColor) {
+      this.style.setProperty("--wa-brand", themeColor);
     }
   }
 
@@ -427,23 +432,31 @@ export class WebAgentWidget extends HTMLElement {
   private async callAgent(userInput: string): Promise<void> {
     const endpoint =
       this.config.apiEndpoint ??
-      "http://localhost:3400/api/v1/agent/customerService";
+      "http://localhost:3001/api/v1/customer-agent/messages";
+
+    // 解析 orders
+    const orders = (this.config.historyOrders ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     this.setLoading(true);
 
     try {
       const response = await sendChatMessage(endpoint, {
-        user_input: userInput,
-        history: this.history.slice(-10),
+        userInput,
+        historyOrders: orders,
         userType: this.config.userType ?? 0,
+        locale: "zh-CN",
       });
 
       const agentMsg: AgentMessage = {
         id: generateId(),
         role: "agent",
-        content: response.reply,
+        content: response.answer,
         timestamp: Date.now(),
-        action: response.action ?? null,
+        action: response.actions?.[0] ?? null,
+        sources: response.sources ?? [],
       };
 
       this.messages.push(agentMsg);

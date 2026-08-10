@@ -3,10 +3,12 @@
   <img src="https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white" alt="Java 21">
   <img src="https://img.shields.io/badge/Spring_Boot-4.0-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.0">
   <img src="https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3.5">
+  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" alt="TypeScript 5.9">
   <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white" alt="MySQL 8.0">
   <img src="https://img.shields.io/badge/Redis-7.x-DC382D?logo=redis&logoColor=white" alt="Redis">
   <img src="https://img.shields.io/badge/Elasticsearch-9.2-005571?logo=elasticsearch&logoColor=white" alt="Elasticsearch">
   <img src="https://img.shields.io/badge/RabbitMQ-4.0-FF6600?logo=rabbitmq&logoColor=white" alt="RabbitMQ">
+  <img src="https://img.shields.io/badge/ChromaDB-向量库-FF6B6B?logo=chroma&logoColor=white" alt="ChromaDB">
   <img src="https://img.shields.io/badge/Dify-AI_Engine-6C5CE7?logo=openai&logoColor=white" alt="Dify">
   <img src="https://img.shields.io/badge/Docker-✓-2496ED?logo=docker&logoColor=white" alt="Docker">
 </p>
@@ -15,17 +17,18 @@
 <h3 align="center">AI Customer Service Platform</h3>
 
 <p align="center">
-  基于 <strong>Dify + Spring Boot + Vue 3</strong> 构建的全栈智能客服平台，<br>
-  适用于电商、金融、政务、教育等各类线上业务场景，提供 AI 自动应答、工单流转、知识库管理与 SLA 监控一体化解决方案。
+  基于 <strong>Dify + 自研 TS Agent + Spring Boot + Vue 3</strong> 构建的全栈智能客服平台，<br>
+  Dify 与自研 Agent 可一键切换，适用于电商、金融、政务、教育等各类线上业务场景。
 </p>
 
 <p align="center">
   <a href="#-核心特性">✨ 核心特性</a> &nbsp;|&nbsp;
   <a href="#-技术架构">🏗️ 技术架构</a> &nbsp;|&nbsp;
+  <a href="#-agent-架构与切换">🔄 Agent 架构</a> &nbsp;|&nbsp;
   <a href="#-快速开始">🚀 快速开始</a> &nbsp;|&nbsp;
   <a href="#-项目结构">📁 项目结构</a> &nbsp;|&nbsp;
   <a href="#-功能模块">🧩 功能模块</a> &nbsp;|&nbsp;
-  <a href="#-API-概览">📡 API 概览</a>
+  <a href="#-api-概览">📡 API 概览</a>
 </p>
 
 ---
@@ -37,7 +40,8 @@
     <td width="50%">
       <h3>💬 AI 智能会话</h3>
       <ul>
-        <li>基于 <strong>Dify</strong> 大模型应用平台，支持流式对话（WebSocket）</li>
+        <li>双引擎切换：<strong>Dify 平台</strong> 与 <strong>自研 TS Agent</strong>（Function Calling + RAG）一键切换</li>
+        <li>支持流式对话（WebSocket / SSE）与阻塞式调用双模式</li>
         <li>公有频道与私密频道双模式，未登录也可体验 AI 客服</li>
         <li>会话超时自动归档，Redis 管理 Session TTL</li>
         <li>用户满意度评分（1-5 星）</li>
@@ -46,7 +50,7 @@
     <td width="50%">
       <h3>📋 工单全生命周期</h3>
       <ul>
-        <li>AI 智能分析：自动打标、业务分类、情感识别</li>
+        <li>AI 智能分析：自动打标、业务分类、情感识别、分派置信度</li>
         <li><strong>Smart Dispatch Engine</strong>：技能匹配 + 负载均衡 + 在线优先派单</li>
         <li>工单流转日志 & 操作审计全链路记录</li>
         <li>支持转交、挂起、完结、评价</li>
@@ -60,8 +64,8 @@
         <li>支持 PDF / Word / Excel / 纯文本 多格式上传</li>
         <li>阿里云 OCR 智能识别 + OpenCV 图像预处理</li>
         <li>分段审核：边界框可视化、置信度评分、人工校正</li>
-        <li>Dify 知识库自动同步（Outbox Pattern + RabbitMQ 重试）</li>
-        <li>MySQL ngram + Elasticsearch 双引擎全文检索</li>
+        <li>双通道同步：Dify 知识库 / <strong>ChromaDB 向量库</strong>（递归分块 + 父文档检索）</li>
+        <li>MySQL ngram + Elasticsearch + 向量语义检索 三引擎</li>
         <li>文档版本管理、到期自动归档、阅读状态追踪</li>
       </ul>
     </td>
@@ -91,11 +95,85 @@
         <li>坐席日报：会话量、平均响应时长、满意度、SLA 合规率</li>
         <li>管理后台：全局服务数据、趋势分析</li>
         <li>知识库运营：检索热度、文档覆盖度</li>
+        <li><strong>Agent 管理中台</strong>：多 Agent 指标可视化、健康监控</li>
         <li>ECharts 可视化图表</li>
       </ul>
     </td>
   </tr>
 </table>
+
+---
+
+## 🔄 Agent 架构与切换
+
+本系统支持两种 AI 引擎，通过一个环境变量一键切换：
+
+| 属性 | Dify 模式（默认） | TS Agent 模式 |
+|------|------------------|---------------|
+| 激活配置 | `AGENT_PROVIDER=dify` | `AGENT_PROVIDER=ts-agent` |
+| LLM | Dify 平台托管 | OpenAI 兼容接口（可选 mock 模式） |
+| 向量数据库 | Dify 内置 | **ChromaDB**（自建） |
+| 分块策略 | Dify 自动（不可控） | **递归分块 + 父文档检索（PDR）** |
+| Embedding | Dify 内置 | OpenAI 兼容 `/embeddings` API |
+| 后端适配器 | `DifyAdapter` | `TsAgentAdapter` |
+| 知识库同步 | Outbox → RabbitMQ → Dify | HTTP multipart → TS Agent → ChromaDB |
+
+### 切换方法
+
+```bash
+# 使用 Dify（默认，无需配置）
+export AGENT_PROVIDER=dify
+
+# 切换为自研 TS Agent
+export AGENT_PROVIDER=ts-agent
+export TS_AGENT_BASE_URL=http://localhost:3001
+```
+
+### 自研 TS Agent 架构
+
+```
+ts-enterprise-webagent/          # TypeScript Monorepo
+├── packages/shared/             # Zod Schema 共享契约
+├── packages/core/               # Agent 核心编排
+│   ├── agents/IAgent.ts         #   统一 Agent 接口（Dify / 自定义）
+│   ├── agents/AgentRegistry.ts  #   Agent 注册中心
+│   ├── routing/                 #   意图路由（RAG 快速 / FC 慢速 / 兜底）
+│   ├── services/                #   情绪分析 · 对话摘要
+│   └── config/agentConfig.ts    #   统一敏感配置管理
+├── apps/server/                 # Fastify HTTP 服务
+│   ├── adapters/
+│   │   ├── chromadbKnowledgeBase.ts  # ChromaDB 向量检索
+│   │   └── difyAgentAdapter.ts       # Dify 适配器
+│   ├── services/
+│   │   ├── documentChunkingService.ts    # 递归分块 + PDR
+│   │   └── chromadbKnowledgeBaseManager.ts  # 知识库管理
+│   └── routes/backendCompatibleRoutes.ts  # Backend 对齐 API
+├── apps/widget/                 # Web Component 嵌入挂件
+├── docs/
+│   ├── architecture-research.md         # Agent 架构选型调研
+│   └── chunking-strategy-research.md    # 分块策略调研
+└── agent-management-ui/         # Agent 管理中台（独立）
+```
+
+### 知识库检索链路
+
+```
+文档上传 → Backend TsAgentAdapter
+         → HTTP POST → TS Agent Server
+         → DocumentChunkingService（递归分块 + PDR）
+         → Embedding API（批量向量化）
+         → ChromaDB（cosine HNSW 索引）
+
+用户提问 → CustomCustomerAgent
+         → ChromadbKnowledgeBase.search()
+         → Embedding API（查询向量化）
+         → ChromaDB Top-K 检索
+         → LLM 生成回答
+```
+
+相关技术文档：
+- [Agent 架构选型调研](ts-enterprise-webagent/docs/architecture-research.md)
+- [分块策略调研报告](ts-enterprise-webagent/docs/chunking-strategy-research.md)
 
 ---
 
@@ -110,6 +188,7 @@ graph TD
         AgentDesk["坐席工作台"]
         AdminPanel["管理后台"]
         KBAdmin["知识库管理"]
+        AgentMgmt["Agent 管理中台"]
     end
 
     subgraph Gateway["API Gateway / Spring Security"]
@@ -121,11 +200,17 @@ graph TD
     subgraph Backend["Backend - Spring Boot DDD 分层架构"]
         Interfaces["interfaces - REST / WebSocket / 安全"]
         Application["application - 编排服务 / 用例"]
-        Domain["domain - 领域模型 / 端口接口"]
-        Infra["infrastructure - 持久化 / 外部适配器"]
+        Domain["domain - 领域模型 / AgentPort 接口"]
+        Infra["infrastructure - DifyAdapter / TsAgentAdapter"]
         Interfaces --> Application
         Application --> Domain
         Infra -.-> Domain
+    end
+
+    subgraph TSAgent["TS Agent - Fastify :3001"]
+        Core["CustomerAgent 编排"]
+        KBRetriever["ChromaDB 向量检索"]
+        Chunking["递归分块 + PDR"]
     end
 
     subgraph Services["中间件"]
@@ -133,10 +218,12 @@ graph TD
         Redis[("Redis")]
         RabbitMQ[("RabbitMQ")]
         ES[("Elasticsearch")]
+        ChromaDB[("ChromaDB")]
     end
 
     subgraph AI["AI 引擎"]
         Dify["Dify Platform"]
+        OpenAI["OpenAI 兼容 API"]
         OCR["阿里云 OCR"]
         LibreOffice["LibreOffice"]
     end
@@ -144,50 +231,11 @@ graph TD
     Frontend --> Gateway
     Gateway --> Backend
     Application --> Services
+    Infra --> Dify
+    Infra --> TSAgent
+    TSAgent --> OpenAI
+    TSAgent --> ChromaDB
     Application --> AI
-```
-
-### DDD 分层依赖关系
-
-```
-backend-boot (启动器)
-    └── backend-interfaces (接口层) ─── Spring MVC · WebSocket · Security
-            └── backend-application (应用层) ─── 用例编排 · 事务管理
-                    ├── backend-domain (领域层) ─── 实体 · 值对象 · 端口
-                    └── backend-infrastructure (基础设施层) ─── MyBatis · Dify · ES
-```
-
-> **核心原则：** 领域层不依赖任何外部框架，基础设施层通过端口接口实现依赖反转。
-
-### 数据流向
-
-```mermaid
-sequenceDiagram
-    actor User as 用户
-    participant Vue as Vue Frontend
-    participant WS as WebSocket
-    participant App as Application Service
-    participant Dify as Dify AI
-    participant DB as MySQL/Redis
-    participant Agent as 人工坐席
-
-    User->>Vue: 发送消息
-    Vue->>WS: ws://api/ws/chat
-    WS->>App: 处理会话
-    App->>Dify: 流式调用 AI
-    Dify-->>App: SSE 流式返回
-    App-->>WS: 逐字推送
-    WS-->>Vue: 实时渲染
-
-    alt AI 无法处理 / 用户请求人工
-        App->>DB: 创建工单
-        App->>App: Dispatch Engine 智能派单
-        DB-->>Agent: 推送新工单
-        Agent->>Vue: 坐席介入回复
-    end
-
-    User->>Vue: 服务评价
-    Vue->>App: 提交满意度
 ```
 
 ---
@@ -203,6 +251,7 @@ sequenceDiagram
 | Node.js | 18+ |
 | Docker & Docker Compose | 最新稳定版 |
 | MySQL | 8.0+ |
+| ChromaDB | 0.5+（TS Agent 模式，可选） |
 
 ### 1️⃣ 克隆仓库
 
@@ -218,7 +267,10 @@ cd Backend
 docker-compose up -d
 ```
 
-> 一键启动 Redis、RabbitMQ、Elasticsearch、LibreOffice 四个容器。
+> 一键启动 Redis、RabbitMQ、Elasticsearch、LibreOffice。TS Agent 模式还需启动 ChromaDB：
+> ```bash
+> docker run -d -p 8000:8000 chromadb/chroma
+> ```
 
 ### 3️⃣ 初始化数据库
 
@@ -228,7 +280,7 @@ mysql -u root -p < Backend/sql/init.sql
 
 ### 4️⃣ 配置环境变量
 
-编辑 `Backend/backend-boot/src/main/resources/application.yml` 或设置环境变量：
+**Backend** (`application.yml`)：
 
 ```yaml
 # 数据库
@@ -238,50 +290,74 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:your_password}
 
-# Dify AI 引擎
+# AI 引擎选择（dify 或 ts-agent）
+agent:
+  provider: ${AGENT_PROVIDER:dify}
+
+# Dify（默认）
 dify:
   base-url: ${DIFY_BASE_URL:https://api.dify.ai}
-  knowledge-key: ${DIFY_KNOWLEDGE_KEY}
   chat-key: ${DIFY_CHAT_KEY}
-  intervention-key: ${DIFY_INTERVENTION_KEY}
-  workorder-key: ${DIFY_WORKORDER_KEY}
+  knowledge-key: ${DIFY_KNOWLEDGE_KEY}
 
-# 阿里云 OCR
-ocr:
-  aliyun:
-    access-key-id: ${OCR_ALIYUN_ACCESS_KEY_ID}
-    access-key-secret: ${OCR_ALIYUN_ACCESS_KEY_SECRET}
+# TS Agent（切换到 ts-agent 时生效）
+ts-agent:
+  base-url: ${TS_AGENT_BASE_URL:http://localhost:3001}
+```
+
+**TS Agent** (复制 `.env.example` 为 `.env`)：
+
+```bash
+# ts-enterprise-webagent/apps/server/.env
+AGENT_MODEL_MODE=openai-compatible
+OPENAI_API_KEY=sk-xxx
+OPENAI_MODEL=gpt-4.1-mini
+
+# Embedding + ChromaDB
+EMBEDDING_MODEL=text-embedding-ada-002
+EMBEDDING_DIMENSIONS=1536
+CHROMADB_URL=http://localhost:8000
+CHROMADB_COLLECTION=customer_service_knowledge
 ```
 
 ### 5️⃣ 启动后端
 
 ```bash
-# Windows
-cd Backend
-mvnw.cmd clean package -DskipTests
-cd backend-boot
-mvnw.cmd spring-boot:run
-
-# Linux / macOS
 cd Backend
 ./mvnw clean package -DskipTests
 cd backend-boot
 ./mvnw spring-boot:run
+# → http://localhost:8081
 ```
 
-> 后端启动于 **`http://localhost:8081`**，健康检查：`GET /api/health`
+### 6️⃣ 启动 TS Agent（可选）
 
-### 6️⃣ 启动前端
+```bash
+cd ts-enterprise-webagent
+npm install
+npm run dev:server
+# → http://localhost:3001
+```
+
+### 7️⃣ 启动前端
 
 ```bash
 cd Frontend
 npm install
 npm run dev
+# → http://localhost:5173
 ```
 
-> 前端启动于 **`http://localhost:5173`**，已配置 API 代理到 `localhost:8081`
+### 8️⃣ 启动 Agent 管理中台（可选）
 
-### 7️⃣ 访问应用
+```bash
+cd agent-management-ui
+# 浏览器直接打开 index.html，或使用任意静态文件服务器
+npx serve .
+# → http://localhost:3000
+```
+
+### 9️⃣ 访问应用
 
 | 地址 | 说明 |
 |------|------|
@@ -289,6 +365,8 @@ npm run dev
 | `http://localhost:5173/login` | 🔐 登录页 |
 | `http://localhost:5173/agent` | 👩‍💼 坐席工作台 |
 | `http://localhost:5173/admin` | ⚙️ 系统管理后台 |
+| `http://localhost:3001/health` | 🔧 TS Agent 健康检查 |
+| `http://localhost:3000` | 📊 Agent 管理中台 |
 
 ---
 
@@ -298,43 +376,47 @@ npm run dev
 ai_customer_service/
 ├── Backend/                                # ☕ 后端 (Spring Boot 多模块)
 │   ├── backend-common/                     # 公共模块：工具类 · 枚举 · 异常 · 配置属性
-│   ├── backend-domain/                     # 领域模块：实体 · 值对象 · 仓储接口 · 领域事件
+│   ├── backend-domain/                     # 领域模块：实体 · 值对象 · 仓储接口 · AgentPort
 │   ├── backend-application/                # 应用模块：用例编排 · 事务服务
-│   ├── backend-infrastructure/             # 基础设施：MyBatis · Dify · OCR · ES · RabbitMQ
-│   ├── backend-interfaces/                 # 接口模块：REST · WebSocket · Security · 切面
-│   ├── backend-boot/                       # 启动模块：Spring Boot 入口 · application.yml
-│   ├── sql/
-│   │   ├── init.sql                        # 完整建表 DDL
-│   │   └── migration_sla_effective.sql     # SLA 增量迁移脚本
-│   ├── docker-compose.yml                  # 中间件容器编排
-│   ├── pom.xml                             # 根 POM (聚合)
-│   ├── mvnw / mvnw.cmd                     # Maven Wrapper
-│   └── .mvn/                               # Maven 配置
+│   ├── backend-infrastructure/             # 基础设施
+│   │   ├── dify/                           #   DifyAdapter · DifyClient
+│   │   └── tsagent/                        #   TsAgentAdapter · TsAgentClient（新增）
+│   ├── backend-interfaces/                 # 接口模块：REST · WebSocket · Security
+│   ├── backend-boot/                       # 启动模块 · application.yml
+│   ├── sql/                                # DDL 脚本
+│   ├── docker-compose.yml
+│   └── pom.xml
 │
 ├── Frontend/                               # 🖥️ 前端 (Vue 3 + Vite)
-│   ├── src/
-│   │   ├── core/                           # Axios · Pinia · Vue Router 初始化
-│   │   ├── domains/                        # 领域模块 (10 个业务域)
-│   │   │   ├── auth/                       #   登录 · 注册
-│   │   │   ├── chat/                       #   AI 对话
-│   │   │   ├── agent/                      #   坐席工作台
-│   │   │   ├── agentmgmt/                  #   坐席/用户管理
-│   │   │   ├── admin/                      #   SLA 配置 · 工作日历
-│   │   │   ├── analytics/                  #   数据分析大盘
-│   │   │   ├── knowledge/                  #   知识库审核与管理
-│   │   │   ├── order/                      #   历史订单
-│   │   │   ├── userprofile/                #   用户画像
-│   │   │   └── workorder/                  #   工单管理
-│   │   ├── layout/AdminLayout.vue          # 管理后台壳布局
-│   │   ├── shared/                         # Composables · Pinia Stores
-│   │   ├── styles/design-tokens.css        # 设计令牌 (CSS 自定义属性)
-│   │   ├── App.vue
-│   │   └── main.js
-│   ├── index.html
-│   ├── vite.config.js
+│   └── src/domains/                        # 10 个业务域（同前）
+│
+├── ts-enterprise-webagent/                 # 🔧 自研 TS Agent (Monorepo)
+│   ├── packages/
+│   │   ├── shared/                         #   Zod 共享契约
+│   │   └── core/                           #   Agent 核心编排
+│   │       └── src/
+│   │           ├── agents/                 #     IAgent · AgentRegistry · CustomCustomerAgent
+│   │           ├── routing/                #     意图分类 · 路由调度
+│   │           ├── services/               #     情绪分析 · 对话摘要
+│   │           └── config/                 #     统一敏感配置管理
+│   ├── apps/
+│   │   ├── server/                         #   Fastify HTTP 服务
+│   │   │   └── src/
+│   │   │       ├── adapters/               #     ChromaDB · Dify · InMemory
+│   │   │       ├── services/               #     文档分块 · 知识库管理
+│   │   │       └── routes/                 #     API 路由
+│   │   └── widget/                        #   Web Component 挂件
+│   ├── docs/
+│   │   ├── architecture-research.md        #   Agent 架构选型调研
+│   │   └── chunking-strategy-research.md   #   分块策略调研
 │   └── package.json
 │
-├── 知识文件monk数据/                        # 📄 测试知识文档
+├── agent-management-ui/                    # 📊 Agent 管理中台
+│   ├── index.html                          #   Vue 3 + Element Plus + ECharts
+│   ├── app.js                              #   仪表盘 · Agent 管理 · 会话监控
+│   └── style.css
+│
+├── 知识文件monk数据/
 └── README.md
 ```
 
@@ -346,10 +428,13 @@ ai_customer_service/
 
 | 功能 | 说明 |
 |------|------|
-| 流式对话 | WebSocket + Dify SSE 流式响应，逐字输出 |
+| 双引擎切换 | Dify 平台 / 自研 TS Agent，`AGENT_PROVIDER` 一键切换 |
+| 流式对话 | WebSocket (Backend) + SSE (TS Agent) 流式响应 |
+| 意图路由 | RAG 快速通道（FAQ） / Function Calling 通道（工单/转人工）|
+| 工单意图检测 | 关键词 + 规则混合分类，自动识别工单/售后/转人工诉求 |
+| 情绪分析 | 关键词 + 情感词典，四级情绪（positive/neutral/negative/angry）|
 | 公有频道 | 未登录用户可访问 `/chat` 进行 AI 对话 |
 | 会话管理 | Redis TTL 自动超时归档 |
-| 满意度评价 | 每次坐席回复后 1-5 星评分 |
 | 会话记录 | 完整对话历史写入 `consultation_logs` + `chat_messages` |
 
 ### 📋 工单管理
@@ -361,58 +446,38 @@ ai_customer_service/
 
 | 功能 | 说明 |
 |------|------|
-| AI 自动分析 | Dify Workflow 自动打标签、分类（售前/售后）、情感分析 |
+| AI 自动分析 | 自动打标签、分类（售前/售后）、情感识别、分派置信度 |
+| 对话摘要 | 转人工时自动生成会话摘要与优先级评估 |
 | 智能派单 | 按技能标签 + 当前负载 + 在线状态分配坐席 |
 | 工单转交 | 支持坐席间转交，完整转交日志 |
-| 操作审计 | SUBMIT → AI_ANALYSIS → DISPATCH → STATUS_CHANGE → COMPLETE → CANCEL |
-| 服务评价 | 工单完结后用户评分 |
+| 操作审计 | SUBMIT → AI_ANALYSIS → DISPATCH → STATUS_CHANGE → COMPLETE |
 
 ### 📚 知识库
 
 ```
-上传文档 → OCR 识别 → 分段审核 → 发布 → 同步 Dify + ES
+上传文档 → OCR 识别 → 分段审核 → 发布 → 同步 Dify / ChromaDB + ES
 ```
 
 | 功能 | 说明 |
 |------|------|
 | 多格式支持 | PDF / DOCX / XLSX / TXT |
-| 分片上传 | 5MB 分片，支持断点续传 |
 | OCR 识别 | 阿里云 OCR + OpenCV 图像预处理 |
 | 分段审核 | 边界框可视化、置信度展示、人工修正 |
-| 版本管理 | 文档历史版本，修订日志 |
+| 双通道同步 | Dify 知识库（Outbox + RabbitMQ）/ ChromaDB 向量库（HTTP multipart）|
+| 向量语义检索 | ChromaDB cosine HNSW 索引（TS Agent 模式）|
+| 分块策略 | 递归分块(chunk=800/overlap=150) + 父文档检索(PDR, child=400/parent=2000) |
 | 全文检索 | Elasticsearch + MySQL ngram 双引擎 |
-| Dify 同步 | Outbox Pattern + RabbitMQ 异步重试 |
-| LibreOffice 预览 | Docker 容器转换文档为 PDF 预览 |
+| 版本管理 | 文档历史版本，修订日志 |
 | 到期归档 | 自动归档过期文档 |
-| 收藏 & 阅读状态 | 个人收藏夹、阅读进度追踪 |
 
-### ⏱️ SLA 时效管理
+### 📊 Agent 管理中台
 
-| 功能 | 说明 |
+| 模块 | 功能 |
 |------|------|
-| 规则配置 | 按 `biz_tag` + `priority` 配置响应/解决时限 |
-| 工作日历 | 工作日期、工作时间段、法定假日、特殊日期 |
-| 时间计算 | 扣除暂停和非工作时段的有效时间 |
-| 超时告警 | ShedLock 分布式定时任务扫描 + 升级通知 |
-| 暂停机制 | 客户等待中 / 三方依赖 / 手动挂起 |
-
-### 🔐 权限管理
-
-```
-ADMIN ───── 系统管理员（全部权限）
-  ├── KB_ADMIN ── 知识库管理员（上传·审核·发布·统计）
-  ├── AGENT ───── 客服坐席（工单处理·在线介入·数据看板）
-  ├── VIP ─────── VIP 用户
-  └── USER ────── 普通用户（AI 对话·查看订单）
-```
-
-### 📊 数据分析
-
-| 角色 | 看板内容 |
-|------|---------|
-| **ADMIN** | 全局数据：工单量、满意度、SLA 合规率、趋势分析 |
-| **AGENT** | 个人日报：会话量、响应时长、满意度、SLA 数据 |
-| **KB_ADMIN** | 知识库运营：文档覆盖度、检索热度、审核效率 |
+| 总览仪表盘 | Agent 数量、请求趋势图、响应时间排行、Agent 分布饼图 |
+| Agent 管理 | 列表/详情/健康检查/指标采集/接入自定义 Agent |
+| 会话监控 | 活跃会话列表、AI 阻断状态、会话清除 |
+| 系统配置 | 脱敏展示 LLM/Embedding/ChromaDB/Dify 配置状态 |
 
 ---
 
@@ -449,40 +514,43 @@ erDiagram
 
 ---
 
-## 📡 API 概览
+## ✨ API 概览
 
 | 路径前缀 | 认证 | 描述 |
 |---------|------|------|
-| `GET /api/health` | Public | 健康检查 |
+| `GET /api/health` | Public | Backend 健康检查 |
+| `GET /health` | Public | TS Agent 健康检查 |
 | `POST /api/auth/login` | Public | 用户登录 |
 | `POST /api/auth/register` | Public | 用户注册 |
 | `GET /api/public/chat/**` | Public | 公开 AI 对话 |
 | `WS /ws/chat` | Public | WebSocket 流式对话 |
-| `GET /api/chat/**` | Authenticated | 会话管理 |
+| `POST /api/v1/customer-agent/messages` | Public | TS Agent 对话 |
+| `POST /api/v1/chat-messages` | Public | TS Agent 阻塞式对话（Backend 对齐） |
+| `POST /api/v1/chat-messages/streaming` | Public | TS Agent SSE 流式 |
+| `POST /api/v1/knowledge/datasets/:id/documents` | — | TS Agent 文档上传（Backend 对齐） |
+| `GET /api/v1/management/agents` | Public | Agent 管理 API |
 | `GET /api/admin/**` | ADMIN | 系统管理 |
-| `GET /api/analysis/**` | Authenticated | 数据分析 |
-| `GET /api/orders/**` | Authenticated | 订单管理 |
-| `GET /api/sla-config/**` | Authenticated | SLA 配置 |
-| `GET /api/agent/**` | Authenticated | 坐席操作 |
 | `GET /api/knowledge/**` | Authenticated | 知识库管理 |
 
 ---
 
 ## 🐳 Docker 中间件
 
-项目根目录 `Backend/docker-compose.yml` 包含以下服务：
-
-| 服务 | 端口 | 管理界面 |
-|------|------|---------|
-| **Redis** | 6379 | — |
-| **RabbitMQ** | 5672 (AMQP) | `http://localhost:15672` |
-| **Elasticsearch** | 9200 | `http://localhost:9200` |
-| **LibreOffice** | — (CLI) | — |
+| 服务 | 端口 | 管理界面 | 说明 |
+|------|------|---------|------|
+| **Redis** | 6379 | — | Session · 分布式锁 |
+| **RabbitMQ** | 5672 | `http://localhost:15672` | 异步解耦 |
+| **Elasticsearch** | 9200 | `http://localhost:9200` | 全文检索 |
+| **LibreOffice** | — | — | 文档预览 |
+| **ChromaDB** | 8000 | — | 向量语义检索（TS Agent 模式） |
 
 ```bash
 # 启动所有中间件
 cd Backend
 docker-compose up -d
+
+# 额外启动 ChromaDB（TS Agent 模式需要）
+docker run -d -p 8000:8000 chromadb/chroma
 
 # 停止
 docker-compose down
@@ -529,6 +597,16 @@ docker-compose down
     <td>企业级组件库</td>
   </tr>
   <tr>
+    <td>Agent 框架</td>
+    <td><img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white"></td>
+    <td>自研 Agent · Fastify · Zod · Monorepo</td>
+  </tr>
+  <tr>
+    <td>向量数据库</td>
+    <td><img src="https://img.shields.io/badge/ChromaDB-0.5-FF6B6B"></td>
+    <td>cosine HNSW · 批量 Embedding</td>
+  </tr>
+  <tr>
     <td>构建工具</td>
     <td><img src="https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite&logoColor=white"></td>
     <td>极速 HMR</td>
@@ -540,13 +618,13 @@ docker-compose down
   </tr>
   <tr>
     <td>AI 引擎</td>
-    <td><img src="https://img.shields.io/badge/Dify-Platform-6C5CE7"></td>
-    <td>LLM 应用编排</td>
+    <td>Dify / 自研 TS Agent</td>
+    <td>一键切换，双引擎并存</td>
   </tr>
   <tr>
     <td>搜索引擎</td>
-    <td><img src="https://img.shields.io/badge/Elasticsearch-9.2-005571?logo=elasticsearch&logoColor=white"></td>
-    <td>全文检索</td>
+    <td><img src="https://img.shields.io/badge/Elasticsearch-9.2-005571?logo=elasticsearch&logoColor=white"> + ChromaDB</td>
+    <td>全文检索 + 向量语义检索</td>
   </tr>
   <tr>
     <td>消息队列</td>

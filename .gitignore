@@ -10,7 +10,7 @@
 # 移动工具包 (J2ME) 临时目录
 .mtj.tmp/
 
-# 打包文件 #
+# 打包文件
 *.jar
 *.war
 *.nar
@@ -19,7 +19,7 @@
 *.tar.gz
 *.rar
 
-# 虚拟机崩溃日志，参见 http://www.java.com/en/download/help/error_hotspot.xml
+# 虚拟机崩溃日志
 hs_err_pid*
 replay_pid*
 
@@ -59,4 +59,48 @@ Thumbs.db
 # Maven / Gradle 构建输出目录
 target/
 
+# ============================================================
+# Node.js / TypeScript（ts-enterprise-webagent · Frontend）
+# ============================================================
+node_modules/
+dist/
+.turbo/
+.vite/
+coverage/
+*.tsbuildinfo
 
+# 环境变量（含敏感密钥，严禁提交）
+.env
+.env.local
+.env.*.local
+
+# npm 调试日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ============================================================
+# Frontend 专属
+# ============================================================
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+
+# ============================================================
+# Agent Management UI 专属
+# ============================================================
+agent-management-ui/node_modules/
+
+# ============================================================
+# Backend 专属
+# ============================================================
+Backend/target/
+Backend/backend-*/target/
+
+# LibreOffice 临时输出
+*.pdf.tmp
+*.docx.tmp
+
+# Maven Wrapper jar（跨平台兼容）
+!.mvn/wrapper/maven-wrapper.jar

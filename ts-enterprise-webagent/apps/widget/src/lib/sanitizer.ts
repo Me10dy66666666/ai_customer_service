@@ -103,7 +103,9 @@ function sanitizeHtml(rawHtml: string): string {
     if (!ALLOWED_TAGS.has(tag)) {
       let inner = "";
       for (let i = 0; i < el.childNodes.length; i++) {
-        const childResult = walk(el.childNodes[i]);
+        const node = el.childNodes[i];
+        if (!node) continue;
+        const childResult = walk(node);
         if (childResult !== null) inner += childResult;
       }
       return inner;
@@ -126,7 +128,9 @@ function sanitizeHtml(rawHtml: string): string {
 
     let children = "";
     for (let i = 0; i < el.childNodes.length; i++) {
-      const childResult = walk(el.childNodes[i]);
+      const node = el.childNodes[i];
+      if (!node) continue;
+      const childResult = walk(node);
       if (childResult !== null) children += childResult;
     }
 
@@ -140,7 +144,9 @@ function sanitizeHtml(rawHtml: string): string {
 
   let result = "";
   for (let i = 0; i < doc.body.childNodes.length; i++) {
-    const childResult = walk(doc.body.childNodes[i]);
+    const node = doc.body.childNodes[i];
+    if (!node) continue;
+    const childResult = walk(node);
     if (childResult !== null) result += childResult;
   }
   return result;
