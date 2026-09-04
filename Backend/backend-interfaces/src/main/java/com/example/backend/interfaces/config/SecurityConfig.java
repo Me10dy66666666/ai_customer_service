@@ -27,7 +27,7 @@ public class SecurityConfig {
 
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/**", "/ws/**", "/api/health", "/health",
-            "/api/public/**");
+            "/api/public/**", "/api/agent/tools/**");
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,

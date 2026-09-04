@@ -25,7 +25,7 @@
 
 ### Phase 0：基线与执行治理
 
-状态：`DONE`
+状态：`DONE_LOCAL（GITHUB_PUSH_PENDING）`
 
 范围：
 
@@ -42,7 +42,7 @@
 
 ### Phase 1：P0 安全基线
 
-状态：`DONE`
+状态：`DONE_LOCAL（GITHUB_PUSH_PENDING）`
 
 范围：
 
@@ -64,7 +64,7 @@
 
 ### Phase 2：Agent Tool Gateway 与 DeepSeek Harness 灰度接入
 
-状态：`PENDING`
+状态：`DONE_LOCAL（GITHUB/DSH_REMOTE_PUSH_PENDING）`
 
 范围：
 
@@ -154,9 +154,9 @@
 
 | 阶段 | 状态 | 提交 SHA | 测试 | 遗留项 |
 |---|---|---|---|---|
-| Phase 0 | DONE | 见 `phase-0` 阶段提交 | Backend 15/15；Frontend build；Pipeline 17/17 + typecheck | DSH 插件待 Phase 2 验证 |
-| Phase 1 | DONE | 见 `phase-1` 阶段提交 | Backend 23/23；Frontend build；Pipeline 18/18 + typecheck | WebSocket 查询参数令牌将在 Phase 2 升级为短期 Capability Ticket；大 Chunk 在 Phase 5 拆分 |
-| Phase 2 | PENDING | - | - | - |
+| Phase 0 | DONE_LOCAL / PUSH_PENDING | `73d6fa93` | Backend 15/15；Frontend build；Pipeline 17/17 + typecheck | GitHub HTTPS 连接被重置；DSH 插件待 Phase 2 验证 |
+| Phase 1 | DONE_LOCAL / PUSH_PENDING | `c2c813bc` | Backend 23/23；Frontend build；Pipeline 18/18 + typecheck | GitHub HTTPS 连接被重置；WebSocket Ticket 与大 Chunk 分别在 Phase 2/5 处理 |
+| Phase 2 | DONE_LOCAL / PUSH_PENDING | 根仓库见 `phase-2`；DSH `b864a7756b` | Backend 27/27；DSH customer-service 4/4 + 三包 typecheck/build | GitHub 网络重置；共享多会话 DSH Worker 上线前必须改为 per-agent scoped capability；当前仅允许单客户隔离 Worker 灰度 |
 | Phase 3 | PENDING | - | - | - |
 | Phase 4 | PENDING | - | - | - |
 | Phase 5 | PENDING | - | - | - |

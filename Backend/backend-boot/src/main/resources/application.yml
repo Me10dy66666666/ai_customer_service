@@ -89,6 +89,8 @@ ts-agent:
 # Agent 提供者选择: dify（默认）| ts-agent
 agent:
   provider: ${AGENT_PROVIDER:dify}
+  gray:
+    dsh-percentage: ${DSH_GRAY_PERCENTAGE:0}
 
 app:
   cache:

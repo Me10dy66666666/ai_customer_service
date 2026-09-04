@@ -11,12 +11,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
 
 @Component
 public class JwtUtils {
     private static final String TOKEN_TYPE = "token_type";
     private static final String ACCESS_TOKEN = "access";
     private static final String CHAT_SESSION_TOKEN = "chat_session";
+    private static final String AGENT_CAPABILITY_TOKEN = "agent_capability";
+    private static final long CAPABILITY_EXPIRATION_MS = 5 * 60 * 1000L;
     private final SecretKey key;
     private final long expirationTime;
 
@@ -80,6 +83,37 @@ public class JwtUtils {
             return false;
         }
     }
+
+    public String generateAgentCapabilityToken(String username, String sessionId, Set<String> scopes) {
+        return Jwts.builder()
+                .subject(username)
+                .claim(TOKEN_TYPE, AGENT_CAPABILITY_TOKEN)
+                .claim("session_id", sessionId)
+                .claim("scopes", scopes.stream().sorted().toList())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + CAPABILITY_EXPIRATION_MS))
+                .signWith(key)
+                .compact();
+    }
+
+    public Optional<AgentCapability> parseAgentCapabilityToken(String token, String requiredScope) {
+        try {
+            Claims claims = parseClaims(token);
+            List<String> scopes = claims.get("scopes", List.class);
+            if (!AGENT_CAPABILITY_TOKEN.equals(claims.get(TOKEN_TYPE, String.class))
+                    || scopes == null || !scopes.contains(requiredScope)) {
+                return Optional.empty();
+            }
+            return Optional.of(new AgentCapability(
+                    claims.getSubject(),
+                    claims.get("session_id", String.class),
+                    Set.copyOf(scopes)));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    public record AgentCapability(String username, String sessionId, Set<String> scopes) {}
 
     private Claims parseClaims(String token) {
         return Jwts.parser().verifyWith(key).build()
