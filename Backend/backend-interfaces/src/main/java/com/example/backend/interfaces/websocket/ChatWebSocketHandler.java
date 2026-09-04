@@ -8,6 +8,7 @@ import com.example.backend.domain.chat.service.SessionStatePort;
 import com.example.backend.infrastructure.messaging.AgentBroadcaster;
 import com.example.backend.infrastructure.messaging.MessageRouter;
 import com.example.backend.infrastructure.messaging.RedisStreamAdapter;
+import com.example.backend.interfaces.config.WebSocketAuthenticationInterceptor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ import java.util.function.Consumer;
 @Component
 @SuppressWarnings("java:S1192")
 public class ChatWebSocketHandler extends TextWebSocketHandler {
+    private static final Set<String> AGENT_ACTIONS = Set.of(
+            "register", "claim", "agent_message", "transfer_ai", "transfer_to_agent",
+            "request_satisfaction", "close", "heartbeat");
     private final ChatApplicationService chatApplicationService;
     private final MessageRouter messageRouter;
     private final SessionStatePort sessionStatePort;
@@ -89,8 +93,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             if (handleAgentAction(session, payload, action)) return;
 
             sessionId = (String) payload.get("sessionId");
-            Long userId = parseLong(payload.get("userId"));
-            Set<String> roles = parseRoleList(payload.get("roles"));
+            if (!Objects.equals(sessionId, authenticatedChatSessionId(session))) {
+                sendJson(session, Map.of("type", "error", "content", "会话凭据无效"));
+                return;
+            }
+            Long userId = authenticatedUserId(session);
+            Set<String> roles = authenticatedRoles(session);
             String content = (String) payload.get("content");
 
             startUserListenerIfNeeded(sessionId, session);
@@ -289,9 +297,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     }
 
     private boolean handleAgentAction(WebSocketSession session, Map<String, Object> payload, String action) {
+        if (AGENT_ACTIONS.contains(action) && !authenticatedRoles(session).contains("AGENT")) {
+            sendJson(session, Map.of("type", "register_failed",
+                    "content", "未认证的客服连接"));
+            return true;
+        }
         return switch (action) {
             case "register" -> {
-                Long agentId = parseLong(payload.get("agentId"));
+                Long agentId = authenticatedUserId(session);
                 if (agentId != null) {
                     agentSessions.put(session, agentId);
                     sessionStatePort.markAgentOnline(agentId);
@@ -339,7 +352,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 String content = (String) payload.get("content");
                 Long agentId = agentSessions.get(session);
                 if (sessionId != null && content != null
-                        && messageRouter.isHumanSession(sessionId)) {
+                        && isAssignedAgent(sessionId, agentId)) {
                     sendToUser(sessionId, Map.of("type", "agent_msg",
                             "content", content));
                     sendJson(session, Map.of("type", "echo", "content", content));
@@ -353,7 +366,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             }
             case "transfer_ai" -> {
                 String sid = (String) payload.get("sessionId");
-                if (sid != null) {
+                Long agentId = agentSessions.get(session);
+                if (sid != null && isAssignedAgent(sid, agentId)) {
                     messageRouter.transferBackToAi(sid);
                     sendToUser(sid, Map.of("type", "back_to_ai", "content", "当前服务已结束"));
                     sendToUser(sid, Map.of("type", "satisfaction_required", "content", "请对本次服务进行评价"));
@@ -365,7 +379,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             case "transfer_to_agent" -> {
                 String sid = (String) payload.get("sessionId");
                 Long targetId = parseLong(payload.get("targetAgentId"));
-                if (sid != null && targetId != null) {
+                Long agentId = agentSessions.get(session);
+                if (sid != null && targetId != null && isAssignedAgent(sid, agentId)) {
                     messageRouter.transferToAgent(sid, targetId);
                     sendToUser(sid, Map.of("type", "agent_transferred", "content", "已为您转接其他客服"));
                     sendJson(session, Map.of("type", "transferred", "sessionId", sid, "targetAgentId", targetId));
@@ -374,14 +389,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             }
             case "request_satisfaction" -> {
                 String sid = (String) payload.get("sessionId");
-                if (sid != null) {
+                Long agentId = agentSessions.get(session);
+                if (sid != null && isAssignedAgent(sid, agentId)) {
                     sendToUser(sid, Map.of("type", "satisfaction_required", "content", "请对本次服务进行评价"));
                 }
                 yield true;
             }
             case "close" -> {
                 String sid = (String) payload.get("sessionId");
-                if (sid != null) {
+                Long agentId = agentSessions.get(session);
+                if (sid != null && isAssignedAgent(sid, agentId)) {
                     messageRouter.closeSession(sid);
                     sendToUser(sid, Map.of("type", "session_closed", "content", "当前服务已结束"));
                     sendToUser(sid, Map.of("type", "satisfaction_required", "content", "请对本次服务进行评价"));
@@ -401,6 +418,28 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             }
             default -> false;
         };
+    }
+
+    private boolean isAssignedAgent(String sessionId, Long agentId) {
+        return agentId != null
+                && messageRouter.isHumanSession(sessionId)
+                && agentId.equals(messageRouter.getAssignedAgent(sessionId));
+    }
+
+    private Long authenticatedUserId(WebSocketSession session) {
+        Object value = session.getAttributes().get(WebSocketAuthenticationInterceptor.ATTR_USER_ID);
+        return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private String authenticatedChatSessionId(WebSocketSession session) {
+        Object value = session.getAttributes().get(WebSocketAuthenticationInterceptor.ATTR_CHAT_SESSION_ID);
+        return value instanceof String sessionId ? sessionId : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Set<String> authenticatedRoles(WebSocketSession session) {
+        Object value = session.getAttributes().get(WebSocketAuthenticationInterceptor.ATTR_ROLES);
+        return value instanceof Set<?> set ? (Set<String>) set : Set.of();
     }
 
     public boolean sendToUser(String sessionId, Object payload) {

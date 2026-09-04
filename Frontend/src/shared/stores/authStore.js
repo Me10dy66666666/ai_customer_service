@@ -38,7 +38,10 @@ export const useAuthStore = defineStore('auth', () => {
 
     const response = await login(loginData)
     if (response.data.code === 200) {
-      if (sessionId) sessionStorage.removeItem('chat_session_id')
+      if (sessionId) {
+        sessionStorage.removeItem('chat_session_id')
+        sessionStorage.removeItem('chat_session_token')
+      }
       const data = response.data.data
       sessionStorage.setItem('token', data.token)
       sessionStorage.setItem('roles', JSON.stringify(data.roles || []))
@@ -59,7 +62,10 @@ export const useAuthStore = defineStore('auth', () => {
 
     const response = await register(payload)
     if (response.data.code === 200) {
-      if (sessionId) sessionStorage.removeItem('chat_session_id')
+      if (sessionId) {
+        sessionStorage.removeItem('chat_session_id')
+        sessionStorage.removeItem('chat_session_token')
+      }
       return { success: true }
     }
     return { success: false, message: response.data.message }

@@ -35,7 +35,7 @@ export function createRbacGuard(router) {
     const authStore = useAuthStore()
     authStore.checkLoginStatus()
 
-    const reqGuest = import.meta.env.VITE_ALLOW_GUEST_ADMIN === 'true'
+    const reqGuest = import.meta.env.DEV && import.meta.env.VITE_ALLOW_GUEST_ADMIN === 'true'
 
     if (to.path.startsWith('/admin') && !authStore.isLoggedIn) {
       if (reqGuest) {

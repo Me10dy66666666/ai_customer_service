@@ -42,7 +42,7 @@
 
 ### Phase 1：P0 安全基线
 
-状态：`PENDING`
+状态：`DONE`
 
 范围：
 
@@ -145,9 +145,9 @@
 
 | 项目 | 结果 | 备注 |
 |---|---|---|
-| Backend | PASS | `mvn test`：15 tests，均集中在一个测试类 |
+| Backend | PASS | `mvn test`：23 tests；新增 WebSocket、会话令牌和细粒度权限安全测试 |
 | Frontend | PASS | `npm run build`；存在两个超过 1 MB 的 Chunk |
-| Data Pipeline | PASS | 17 tests；TypeScript typecheck 通过 |
+| Data Pipeline | PASS | 18 tests；服务认证测试与 TypeScript typecheck 通过 |
 | DSH 客服插件 | NOT VERIFIED | 独立仓库依赖未完整安装，README 标记为 first-pass |
 
 ## 6. 阶段执行记录
@@ -155,7 +155,7 @@
 | 阶段 | 状态 | 提交 SHA | 测试 | 遗留项 |
 |---|---|---|---|---|
 | Phase 0 | DONE | 见 `phase-0` 阶段提交 | Backend 15/15；Frontend build；Pipeline 17/17 + typecheck | DSH 插件待 Phase 2 验证 |
-| Phase 1 | PENDING | - | - | - |
+| Phase 1 | DONE | 见 `phase-1` 阶段提交 | Backend 23/23；Frontend build；Pipeline 18/18 + typecheck | WebSocket 查询参数令牌将在 Phase 2 升级为短期 Capability Ticket；大 Chunk 在 Phase 5 拆分 |
 | Phase 2 | PENDING | - | - | - |
 | Phase 3 | PENDING | - | - | - |
 | Phase 4 | PENDING | - | - | - |

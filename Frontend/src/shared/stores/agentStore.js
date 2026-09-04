@@ -77,7 +77,12 @@ export const useAgentStore = defineStore('agent', () => {
       socket.value = null
     }
 
-    const ws = new WebSocket(WS_URL)
+    const token = sessionStorage.getItem('token')
+    if (!token) {
+      connectReject?.(new Error('登录凭据已失效，请重新登录'))
+      return
+    }
+    const ws = new WebSocket(`${WS_URL}?access_token=${encodeURIComponent(token)}`)
 
     ws.onopen = () => {
       socket.value = ws

@@ -8,10 +8,17 @@ import com.example.backend.domain.chat.model.ConsultationLog;
 import com.example.backend.domain.chat.model.SessionState;
 import com.example.backend.domain.chat.service.SessionStatePort;
 import com.example.backend.interfaces.security.RequireRole;
+import com.example.backend.common.exception.UnauthorizedException;
+import com.example.backend.infrastructure.security.JwtUtils;
+import com.example.backend.infrastructure.messaging.MessageRouter;
+import com.example.backend.infrastructure.persistence.entity.User;
+import com.example.backend.infrastructure.persistence.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -26,6 +33,9 @@ public class ChatController {
     private final ChatMessageService chatMessageService;
     private final SessionStatePort sessionStatePort;
     private final StringRedisTemplate stringRedisTemplate;
+    private final JwtUtils jwtUtils;
+    private final MessageRouter messageRouter;
+    private final UserMapper userMapper;
 
     private static final String KEY_SENDER_TYPE = "senderType";
     private static final String KEY_CONTENT = "content";
@@ -39,17 +49,26 @@ public class ChatController {
     }
 
     @GetMapping("/history")
-    public Result<List<ConsultationLog>> getHistory(@RequestParam String sessionId) {
+    public Result<List<ConsultationLog>> getHistory(
+            @RequestParam String sessionId,
+            @RequestHeader(value = "X-Chat-Session-Token", required = false) String sessionToken) {
+        requireSessionAccess(sessionId, sessionToken);
         return Result.success(chatApplicationService.getHistory(sessionId));
     }
 
     @GetMapping("/messages")
-    public Result<List<ChatMessage>> getMessages(@RequestParam String sessionId) {
+    public Result<List<ChatMessage>> getMessages(
+            @RequestParam String sessionId,
+            @RequestHeader(value = "X-Chat-Session-Token", required = false) String sessionToken) {
+        requireSessionAccess(sessionId, sessionToken);
         return Result.success(chatMessageService.getHistory(sessionId));
     }
 
     @GetMapping("/session/{sessionId}/status")
-    public Result<Map<String, Object>> getSessionStatus(@PathVariable String sessionId) {
+    public Result<Map<String, Object>> getSessionStatus(
+            @PathVariable String sessionId,
+            @RequestHeader(value = "X-Chat-Session-Token", required = false) String sessionToken) {
+        requireSessionAccess(sessionId, sessionToken);
         SessionState state = sessionStatePort.getState(sessionId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sessionId", sessionId);
@@ -66,7 +85,9 @@ public class ChatController {
 
     @GetMapping("/session/{sessionId}/full-history")
     public Result<List<Map<String, Object>>> getFullHistory(@PathVariable String sessionId,
-                                                              @RequestParam(required = false) String since) {
+                                                              @RequestParam(required = false) String since,
+                                                              @RequestHeader(value = "X-Chat-Session-Token", required = false) String sessionToken) {
+        requireSessionAccess(sessionId, sessionToken);
         LocalDateTime sinceTime = parseSinceTime(since);
         List<Map<String, Object>> merged = new ArrayList<>();
 
@@ -141,6 +162,32 @@ public class ChatController {
             String tb = (String) b.getOrDefault("time", "");
             return ta.compareTo(tb);
         });
+    }
+
+    private void requireSessionAccess(String sessionId, String sessionToken) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = hasRole(authentication, "ROLE_ADMIN");
+        boolean agent = hasRole(authentication, "ROLE_AGENT");
+        if (admin) {
+            return;
+        }
+        if (agent) {
+            User user = userMapper.findByUsername(authentication.getName());
+            Long assignedAgent = messageRouter.getAssignedAgent(sessionId);
+            if (user == null || !Objects.equals(user.getId(), assignedAgent)) {
+                throw new UnauthorizedException("Session is not assigned to current agent");
+            }
+            return;
+        }
+        if (sessionToken == null || !jwtUtils.validateChatSessionToken(sessionToken, sessionId)) {
+            throw new UnauthorizedException("Invalid chat session token");
+        }
+    }
+
+    private boolean hasRole(Authentication authentication, String role) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .anyMatch(role::equals);
     }
 
     @PostMapping("/satisfaction")

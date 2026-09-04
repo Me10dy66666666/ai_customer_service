@@ -434,7 +434,7 @@ const handleLogout = () => { auth.logout(); chat.disconnect(); view.value = 'cha
 
 onMounted(async () => {
   auth.checkLoginStatus()
-  chat.initSession()
+  await chat.initSession()
   const isGuest = !auth.isLoggedIn
   await chat.loadHistory(isGuest)
   chat.connectWebSocket().then(() => {

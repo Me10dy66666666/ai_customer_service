@@ -1,12 +1,13 @@
 package com.example.backend.interfaces.security;
 
 import com.example.backend.common.Result;
-import com.example.backend.infrastructure.security.JwtUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -17,11 +18,9 @@ import java.util.Set;
 @Component
 public class RoleInterceptor implements HandlerInterceptor {
 
-    private final JwtUtils jwtUtils;
     private final ObjectMapper objectMapper;
 
-    public RoleInterceptor(JwtUtils jwtUtils, ObjectMapper objectMapper) {
-        this.jwtUtils = jwtUtils;
+    public RoleInterceptor(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
@@ -37,20 +36,16 @@ public class RoleInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            writeError(response, 401, "Missing or invalid Authorization header");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            writeError(response, 401, "Authentication is required");
             return false;
         }
-
-        String token = authHeader.substring(7);
-
-        Set<String> tokenRoles;
-        try {
-            tokenRoles = jwtUtils.getRolesFromToken(token);
-        } catch (Exception e) {
-            tokenRoles = Set.of();
-        }
+        Set<String> tokenRoles = authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .collect(java.util.stream.Collectors.toSet());
 
         if (tokenRoles.isEmpty()) {
             writeError(response, 403, "Access denied: missing role information in token");
@@ -81,7 +76,7 @@ public class RoleInterceptor implements HandlerInterceptor {
     }
 
     private void writeError(HttpServletResponse response, int status, String message) throws IOException {
-        response.setStatus(200);
+        response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
         Result<Void> result = Result.error(status, message);
         response.getWriter().write(objectMapper.writeValueAsString(result));

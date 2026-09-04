@@ -34,11 +34,15 @@ export const useChatStore = defineStore('chat', () => {
     return `${Math.round(estimatedWait.value / 3600)}小时`
   })
 
-  const initSession = () => {
+  const initSession = async () => {
     let sid = sessionStorage.getItem('chat_session_id')
-    if (!sid) {
-      sid = 'guest-' + Math.random().toString(36).substring(2, 11) + '-' + Date.now()
+    let sessionToken = sessionStorage.getItem('chat_session_token')
+    if (!sid || !sessionToken) {
+      const response = await http.post('/api/public/chat/session')
+      sid = response.data.data.sessionId
+      sessionToken = response.data.data.sessionToken
       sessionStorage.setItem('chat_session_id', sid)
+      sessionStorage.setItem('chat_session_token', sessionToken)
     }
     sessionId.value = sid
     return sid
@@ -50,10 +54,7 @@ export const useChatStore = defineStore('chat', () => {
       /```(?:json|JSON)?\s*\{[\s\S]*?"action"\s*:\s*"create_work_order"[\s\S]*?\}\s*```/g,
       ''
     )
-    processed = processed.replace(
-      /<think>([\s\S]*?)<\/think>/g,
-      '<details class="thought-process"><summary>思考过程</summary><div class="thought-content">$1</div></details>'
-    )
+    processed = processed.replace(/<think>[\s\S]*?<\/think>/g, '')
     return String(DOMPurify.sanitize(marked.parse(processed)))
   }
 
@@ -98,7 +99,12 @@ export const useChatStore = defineStore('chat', () => {
       const reconnectAttempts = { count: 0 }
 
       const doConnect = () => {
-        const client = createWebSocketClient(WS_URL)
+        const token = sessionStorage.getItem('token')
+        const sessionToken = sessionStorage.getItem('chat_session_token') || ''
+        const params = new URLSearchParams({ session_id: sessionId.value, chat_token: sessionToken })
+        if (token) params.set('access_token', token)
+        const url = `${WS_URL}?${params.toString()}`
+        const client = createWebSocketClient(url)
 
         client.onMessage(handleWsDispatch)
 
@@ -116,7 +122,8 @@ export const useChatStore = defineStore('chat', () => {
     if (!sid) return
     const basePath = isGuest ? '/api/public/chat' : '/api/chat'
     try {
-      const res = await http.get(`${basePath}/session/${sid}/status`)
+      const headers = { 'X-Chat-Session-Token': sessionStorage.getItem('chat_session_token') || '' }
+      const res = await http.get(`${basePath}/session/${sid}/status`, { headers })
       if (res.data.code === 200 && res.data.data) {
         const statusData = res.data.data
         humanSessionActive.value = Boolean(statusData.humanSessionActive)
@@ -494,7 +501,8 @@ export const useChatStore = defineStore('chat', () => {
   const loadHistory = async (isGuest = false) => {
     const basePath = isGuest ? '/api/public/chat' : '/api/chat'
     try {
-      const res = await http.get(`${basePath}/session/${sessionId.value}/full-history`)
+      const headers = { 'X-Chat-Session-Token': sessionStorage.getItem('chat_session_token') || '' }
+      const res = await http.get(`${basePath}/session/${sessionId.value}/full-history`, { headers })
       if (res.data.code === 200) {
         const merged = res.data.data || []
         messages.value = merged.map(item => {

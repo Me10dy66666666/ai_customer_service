@@ -3,10 +3,12 @@ package com.example.backend.interfaces.controller;
 import com.example.backend.application.service.ChatApplicationService;
 import com.example.backend.application.service.ChatMessageService;
 import com.example.backend.common.Result;
+import com.example.backend.common.exception.UnauthorizedException;
 import com.example.backend.domain.chat.model.ChatMessage;
 import com.example.backend.domain.chat.model.ConsultationLog;
 import com.example.backend.domain.chat.model.SessionState;
 import com.example.backend.domain.chat.service.SessionStatePort;
+import com.example.backend.infrastructure.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,18 +24,33 @@ public class PublicChatController {
     private final ChatApplicationService chatApplicationService;
     private final ChatMessageService chatMessageService;
     private final SessionStatePort sessionStatePort;
+    private final JwtUtils jwtUtils;
 
     private static final String KEY_SENDER_TYPE = "senderType";
     private static final String KEY_CONTENT = "content";
     private static final String KEY_SOURCE = "source";
 
+    @PostMapping("/session")
+    public Result<Map<String, String>> createSession() {
+        String sessionId = "guest-" + UUID.randomUUID();
+        return Result.success(Map.of(
+                "sessionId", sessionId,
+                "sessionToken", jwtUtils.generateChatSessionToken(sessionId)));
+    }
+
     @GetMapping("/history")
-    public Result<List<ConsultationLog>> getHistory(@RequestParam String sessionId) {
+    public Result<List<ConsultationLog>> getHistory(
+            @RequestParam String sessionId,
+            @RequestHeader("X-Chat-Session-Token") String sessionToken) {
+        requireSessionAccess(sessionId, sessionToken);
         return Result.success(chatApplicationService.getHistory(sessionId));
     }
 
     @GetMapping("/session/{sessionId}/status")
-    public Result<Map<String, Object>> getSessionStatus(@PathVariable String sessionId) {
+    public Result<Map<String, Object>> getSessionStatus(
+            @PathVariable String sessionId,
+            @RequestHeader("X-Chat-Session-Token") String sessionToken) {
+        requireSessionAccess(sessionId, sessionToken);
         SessionState state = sessionStatePort.getState(sessionId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sessionId", sessionId);
@@ -50,7 +67,9 @@ public class PublicChatController {
 
     @GetMapping("/session/{sessionId}/full-history")
     public Result<List<Map<String, Object>>> getFullHistory(@PathVariable String sessionId,
-                                                             @RequestParam(required = false) String since) {
+                                                             @RequestParam(required = false) String since,
+                                                             @RequestHeader("X-Chat-Session-Token") String sessionToken) {
+        requireSessionAccess(sessionId, sessionToken);
         LocalDateTime sinceTime = parseSinceTime(since);
         List<Map<String, Object>> merged = new ArrayList<>();
 
@@ -125,5 +144,11 @@ public class PublicChatController {
             String tb = (String) b.getOrDefault("time", "");
             return ta.compareTo(tb);
         });
+    }
+
+    private void requireSessionAccess(String sessionId, String sessionToken) {
+        if (!jwtUtils.validateChatSessionToken(sessionToken, sessionId)) {
+            throw new UnauthorizedException("Invalid chat session token");
+        }
     }
 }
