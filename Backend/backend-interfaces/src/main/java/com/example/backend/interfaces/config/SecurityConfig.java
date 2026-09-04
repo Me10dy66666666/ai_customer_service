@@ -3,6 +3,7 @@ package com.example.backend.interfaces.config;
 import com.example.backend.infrastructure.security.JwtUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,9 +22,12 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    @Value("${security.cors.allowed-origins:http://localhost:5173}")
+    private List<String> allowedOrigins;
+
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/**", "/ws/**", "/api/health", "/health",
-            "/api/public/**");
+            "/api/public/**", "/api/agent/tools/**");
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
@@ -54,8 +58,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 内部管理系统，允许所有来源；生产环境如需收紧请改为具体域名
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

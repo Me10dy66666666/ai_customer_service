@@ -58,6 +58,13 @@ mybatis:
 server:
   port: 8081
 
+security:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-change-this-jwt-secret-before-production-2026}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 dify:
   base-url: ${DIFY_BASE_URL:https://api.dify.ai/v1}
   knowledge:
@@ -82,6 +89,8 @@ ts-agent:
 # Agent 提供者选择: dify（默认）| ts-agent
 agent:
   provider: ${AGENT_PROVIDER:dify}
+  gray:
+    dsh-percentage: ${DSH_GRAY_PERCENTAGE:0}
 
 app:
   cache:

@@ -11,6 +11,7 @@ import com.example.backend.application.service.SlaCalculationService;
 import com.example.backend.application.service.WorkOrderApplicationService;
 import com.example.backend.common.Result;
 import com.example.backend.common.enums.SlaPauseReason;
+import com.example.backend.common.exception.ForbiddenException;
 import com.example.backend.domain.chat.model.ChatMessage;
 import com.example.backend.domain.workorder.model.WorkOrder;
 import com.example.backend.domain.workorder.model.WorkOrderAuditLog;
@@ -18,10 +19,14 @@ import com.example.backend.infrastructure.messaging.MessageRouter;
 import com.example.backend.infrastructure.persistence.entity.User;
 import com.example.backend.infrastructure.persistence.mapper.UserMapper;
 import com.example.backend.interfaces.websocket.ChatWebSocketHandler;
+import com.example.backend.interfaces.security.RequireRole;
+import com.example.backend.interfaces.security.RequirePermission;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +36,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/work-orders")
 @RequiredArgsConstructor
+@RequireRole({"USER", "VIP", "AGENT", "ADMIN"})
 public class WorkOrderController {
     private final WorkOrderApplicationService workOrderApplicationService;
     private final ChatSummaryService chatSummaryService;
@@ -48,6 +54,10 @@ public class WorkOrderController {
 
     @PostMapping
     public Result<WorkOrder> create(@Valid @RequestBody CreateWorkOrderCommand command) {
+        if (!isStaff()) {
+            command.setUserId(currentUserId());
+            command.setCreatorAgentId(null);
+        }
         WorkOrder wo = WorkOrder.create(
                 command.getUserId(),
                 command.getTitle(),
@@ -129,6 +139,12 @@ public class WorkOrderController {
                                              @RequestParam(required = false) Long handlerId,
                                              @RequestParam(defaultValue = "1") int page,
                                              @RequestParam(defaultValue = "50") int size) {
+        if (!isStaff()) {
+            userId = currentUserId();
+            handlerId = null;
+        } else if (!isAdmin()) {
+            handlerId = currentUserId();
+        }
         if (userId != null) {
             return Result.success(Map.of(
                     "list", workOrderApplicationService.findByUserId(userId),
@@ -154,17 +170,27 @@ public class WorkOrderController {
 
     @GetMapping("/{id}")
     public Result<WorkOrder> getById(@PathVariable Long id) {
-        return Result.success(workOrderApplicationService.findById(id));
+        WorkOrder workOrder = workOrderApplicationService.findById(id);
+        assertCanRead(workOrder);
+        return Result.success(workOrder);
     }
 
     @GetMapping("/unassigned")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<List<WorkOrder>> listUnassigned() {
         return Result.success(workOrderApplicationService.findUnassigned());
     }
 
     @PutMapping("/{id}/status")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<WorkOrder> updateStatus(@PathVariable Long id,
                                            @Valid @RequestBody UpdateWorkOrderCommand command) {
+        assertCanManage(id);
+        if (!isAdmin()) {
+            command.setHandlerId(currentUserId());
+        }
         WorkOrder saved = workOrderApplicationService.updateStatus(id,
                 Map.of("status", command.getStatus(),
                         "handlerId", command.getHandlerId() != null ? command.getHandlerId() : "",
@@ -173,8 +199,11 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/claim")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, Object>> claim(@PathVariable Long id,
                                               @RequestParam Long handlerId) {
+        handlerId = currentUserId();
         boolean claimed = workOrderApplicationService.claimWorkOrder(id, handlerId);
         if (claimed) {
             return Result.success(Map.of(KEY_CLAIMED, true, "message", "工单认领成功"));
@@ -183,8 +212,12 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/reply")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, Object>> reply(@PathVariable Long id,
                                               @Valid @RequestBody ReplyWorkOrderCommand command) {
+        assertCanManage(id);
+        command.setAgentId(currentUserId());
         ChatMessage message = workOrderApplicationService.replyWorkOrder(id, command.getContent(), command.getAgentId());
         WorkOrder wo = workOrderApplicationService.findById(id);
 
@@ -205,21 +238,26 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/transfer")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<WorkOrder> transfer(@PathVariable Long id,
                                        @Valid @RequestBody TransferWorkOrderCommand command) {
+        assertCanManage(id);
         WorkOrder updated = workOrderApplicationService.transferWorkOrder(id, command.getTargetHandlerId());
         return Result.success(updated);
     }
 
     @PostMapping("/{id}/note")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, Object>> addNote(@PathVariable Long id,
                                                 @RequestBody Map<String, String> body) {
+        assertCanManage(id);
         String content = body.get(KEY_CONTENT);
         if (content == null || content.trim().isEmpty()) {
             return Result.error(400, "备注内容不能为空");
         }
-        Long agentId = null;
-        try { agentId = Long.parseLong(body.getOrDefault("agentId", "0")); } catch (NumberFormatException ignored) { }
+        Long agentId = currentUserId();
         WorkOrderAuditLog log = workOrderApplicationService.addNote(id, content, agentId);
         return Result.success(Map.of("id", log.getId(), KEY_WORK_ORDER_ID, log.getWorkOrderId(),
                 "action", log.getAction(), "detail", log.getDetail(),
@@ -227,9 +265,10 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/rate")
+    @RequireRole({"USER", "VIP"})
     public Result<?> rateWorkOrder(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         Integer rating = body.get("rating") != null ? Integer.valueOf(body.get("rating").toString()) : null;
-        Long userId = body.get("userId") != null ? Long.valueOf(body.get("userId").toString()) : null;
+        Long userId = currentUserId();
         if (rating == null || rating < 1 || rating > 5) {
             return Result.error(400, "评分必须在1-5之间");
         }
@@ -240,12 +279,17 @@ public class WorkOrderController {
     @GetMapping("/{id}/audit-logs")
     public Result<List<WorkOrderAuditLog>> getAuditLogs(@PathVariable Long id,
                                                           @RequestParam(defaultValue = "false") boolean userVisible) {
-        return Result.success(workOrderApplicationService.getAuditLogs(id, userVisible));
+        WorkOrder workOrder = workOrderApplicationService.findById(id);
+        assertCanRead(workOrder);
+        return Result.success(workOrderApplicationService.getAuditLogs(id, isStaff() ? userVisible : true));
     }
 
     @PostMapping("/{id}/connect-session")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, Object>> connectSession(@PathVariable Long id,
                                                        @RequestParam Long agentId) {
+        agentId = currentUserId();
         boolean freshClaimed = workOrderApplicationService.claimWorkOrder(id, agentId);
         WorkOrder wo = workOrderApplicationService.findById(id);
         // 工单已被当前客服认领时仍应允许建立会话沟通
@@ -269,8 +313,12 @@ public class WorkOrderController {
     }
 
     @GetMapping("/{id}/user-phone")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, String>> getUserPhone(@PathVariable Long id,
                                                       @RequestParam Long agentId) {
+        assertCanManage(id);
+        agentId = currentUserId();
         WorkOrder wo = workOrderApplicationService.findById(id);
         if (wo == null || wo.getUserId() == null) {
             return Result.error(404, "工单不存在或用户信息缺失");
@@ -285,8 +333,12 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/close-session")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, Object>> closeSession(@PathVariable Long id,
                                                      @RequestParam Long agentId) {
+        assertCanManage(id);
+        agentId = currentUserId();
         WorkOrder wo = workOrderApplicationService.findById(id);
         if (wo == null || wo.getSessionId() == null) {
             return Result.error(400, "工单不存在或会话未关联");
@@ -307,21 +359,16 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/pause-sla")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, Object>> pauseSla(@PathVariable Long id,
                                                  @RequestBody Map<String, String> body) {
+        assertCanManage(id);
         String reason = body.get("reason");
         if (reason == null || !SlaPauseReason.isValid(reason)) {
             return Result.error(400, "无效的暂停原因: " + reason + "，有效值: " + SlaPauseReason.getValidCodes());
         }
-        Long agentIdLong = null;
-        String agentIdStr = body.get("agentId");
-        if (agentIdStr != null && !agentIdStr.isEmpty()) {
-            try {
-                agentIdLong = Long.parseLong(agentIdStr);
-            } catch (NumberFormatException e) {
-                return Result.error(400, "无效的agentId");
-            }
-        }
+        Long agentIdLong = currentUserId();
         try {
             workOrderApplicationService.pauseSla(id, reason, agentIdLong);
             return Result.success(Map.of("paused", true));
@@ -332,21 +379,12 @@ public class WorkOrderController {
     }
 
     @PostMapping("/{id}/resume-sla")
+    @RequireRole({"AGENT", "ADMIN"})
+    @RequirePermission("work_order:manage")
     public Result<Map<String, Object>> resumeSla(@PathVariable Long id,
                                                   @RequestBody Map<String, Object> body) {
-        Long agentIdLong = null;
-        Object agentIdObj = body.get("agentId");
-        if (agentIdObj != null) {
-            try {
-                if (agentIdObj instanceof Number) {
-                    agentIdLong = ((Number) agentIdObj).longValue();
-                } else {
-                    agentIdLong = Long.parseLong(agentIdObj.toString());
-                }
-            } catch (NumberFormatException e) {
-                return Result.error(400, "无效的agentId");
-            }
-        }
+        assertCanManage(id);
+        Long agentIdLong = currentUserId();
         try {
             workOrderApplicationService.resumeSla(id, agentIdLong);
             WorkOrder updatedWo = workOrderApplicationService.findById(id);
@@ -359,5 +397,48 @@ public class WorkOrderController {
             log.error("Failed to resume SLA for work order {}: {}", id, e.getMessage(), e);
             return Result.error(500, "恢复SLA失败");
         }
+    }
+
+    private Long currentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ForbiddenException("Authenticated user is required");
+        }
+        User user = userMapper.findByUsername(authentication.getName());
+        if (user == null || user.getId() == null) {
+            throw new ForbiddenException("Authenticated user no longer exists");
+        }
+        return user.getId();
+    }
+
+    private boolean isStaff() {
+        return hasRole("AGENT") || hasRole("ADMIN");
+    }
+
+    private boolean isAdmin() {
+        return hasRole("ADMIN");
+    }
+
+    private boolean hasRole(String role) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> ("ROLE_" + role).equals(authority.getAuthority()));
+    }
+
+    private void assertCanRead(WorkOrder workOrder) {
+        if (isAdmin()) {
+            return;
+        }
+        Long currentId = currentUserId();
+        if (hasRole("AGENT") && !currentId.equals(workOrder.getHandlerId())) {
+            throw new ForbiddenException("Work order is not assigned to current agent");
+        }
+        if (!hasRole("AGENT") && !currentId.equals(workOrder.getUserId())) {
+            throw new ForbiddenException("Access denied for this work order");
+        }
+    }
+
+    private void assertCanManage(Long workOrderId) {
+        assertCanRead(workOrderApplicationService.findById(workOrderId));
     }
 }
