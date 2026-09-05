@@ -117,7 +117,8 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
 import { getCalendars, getCalendar, updateCalendar, getSpecialDates, addSpecialDate, deleteSpecialDate } from '@/domains/admin/workCalendarService'
 
 const calendarList = ref([])

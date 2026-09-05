@@ -29,6 +29,8 @@ export const useAgentStore = defineStore('agent', () => {
   let reconnectTimer = null
   let connectResolve = null
   let connectReject = null
+  const messageHandlers = new Set()
+  const connectionHandlers = new Set()
 
   const filteredQueue = computed(() => {
     let list = queue.value
@@ -87,6 +89,8 @@ export const useAgentStore = defineStore('agent', () => {
     ws.onopen = () => {
       socket.value = ws
       connected.value = true
+      const reconnected = reconnectAttempts.value > 0
+      connectionHandlers.forEach((handler) => handler({ connected: true, reconnected }))
       const auth = useAuthStore()
       ws.send(JSON.stringify({ action: 'register', agentId: auth.userId }))
       startHeartbeat()
@@ -96,6 +100,11 @@ export const useAgentStore = defineStore('agent', () => {
       let msg = null
       try { msg = JSON.parse(event.data) } catch { return }
       if (!msg || !msg.type) return
+      messageHandlers.forEach((handler) => {
+        try { handler(msg) } catch (error) {
+          if (import.meta.env.DEV) console.error('Agent WS subscriber failed:', error)
+        }
+      })
 
       switch (msg.type) {
         case 'connected':
@@ -317,6 +326,7 @@ export const useAgentStore = defineStore('agent', () => {
       socket.value = null
       connected.value = false
       online.value = false
+      connectionHandlers.forEach((handler) => handler({ connected: false, reconnected: false }))
       stopHeartbeat()
 
       if (reconnectAttempts.value < MAX_RECONNECT) {
@@ -640,6 +650,16 @@ export const useAgentStore = defineStore('agent', () => {
     online.value = false
   }
 
+  const onMessage = (handler) => {
+    messageHandlers.add(handler)
+    return () => messageHandlers.delete(handler)
+  }
+
+  const onConnectionChange = (handler) => {
+    connectionHandlers.add(handler)
+    return () => connectionHandlers.delete(handler)
+  }
+
   const nowTime = () => new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 
   return {
@@ -668,6 +688,8 @@ export const useAgentStore = defineStore('agent', () => {
     closeSession,
     disconnect,
     fetchPendingQueue,
-    fetchAiConversation
+    fetchAiConversation,
+    onMessage,
+    onConnectionChange
   }
 })

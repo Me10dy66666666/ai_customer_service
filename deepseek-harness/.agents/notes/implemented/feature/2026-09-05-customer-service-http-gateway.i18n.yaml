@@ -1,0 +1,4 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state.
+2026-09-05-customer-service-http-gateway.md: bd5094a2fb819fb00a70914b401e3cb448ebab01
+2026-09-05-customer-service-http-gateway.zh.md: e10d61f17cd3a47f1b6af02bd0ad452905de2a4b

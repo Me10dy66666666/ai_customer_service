@@ -23,14 +23,14 @@
 - 阶段提交格式：`phase-N: <阶段结果>`
 - 每次推送前执行：`git diff --check`、对应模块测试、检查提交文件清单。
 - 每次推送后在本文件记录提交 SHA、测试结果和遗留项。
-- `deepseek-harness/` 是独立 Git 仓库，未经确认不得把整个上游仓库嵌入根仓库提交；DSH 插件变更在其独立仓库中提交，或后续抽取到根仓库自有模块。
+- `deepseek-harness/` 保持源仓库目录结构；本次已获用户明确确认，将 DSH 工作树合并为个人项目普通目录随根仓库推送，不向上游远端推送。
 - 本 SOP 是当前执行基准；历史 PRD/README 中任何“自研 TS Agent”或 `ts-agent` 切换描述均不再指导实施。
 
 ## 4. 阶段计划与验收标准
 
 ### Phase 0：基线与执行治理
 
-状态：`DONE_LOCAL（GITHUB_PUSH_PENDING）`
+状态：`DONE_REMOTE`
 
 范围：
 
@@ -47,7 +47,7 @@
 
 ### Phase 1：P0 安全基线
 
-状态：`DONE_LOCAL（GITHUB_PUSH_PENDING）`
+状态：`DONE_REMOTE`
 
 范围：
 
@@ -69,7 +69,7 @@
 
 ### Phase 2：Agent Tool Gateway 与 DeepSeek Harness 灰度接入
 
-状态：`DONE_LOCAL（GITHUB/DSH_REMOTE_PUSH_PENDING）`
+状态：`DONE_REMOTE`
 
 范围：
 
@@ -109,7 +109,7 @@
 
 ### Phase 4：DSH 客服 Agent 可靠性、可观测性与数据一致性
 
-状态：`DONE_REMOTE（DSH_PERSONAL_REMOTE_PENDING / DEPLOYMENT_DRILL_PENDING）`
+状态：`DONE_REMOTE（DEPLOYMENT_DRILL_PENDING）`
 
 范围：
 
@@ -144,7 +144,7 @@
 
 ### Phase 5：前端工程化、测试体系与发布
 
-状态：`DONE_LOCAL（CI_E2E_TOOLCHAIN_PENDING）`
+状态：`DONE_REMOTE（CI_E2E_TOOLCHAIN_PENDING）`
 
 范围：
 
@@ -167,21 +167,21 @@
 
 | 项目 | 结果 | 备注 |
 |---|---|---|
-| Backend | PASS | `mvn -o -q -pl backend-boot -am test`：34 tests；包含 DSH/Dify 契约、向量重试、Outbox 重放和乐观锁测试 |
+| Backend | PASS | `mvn -o -q -pl backend-boot -am test`：35 tests；包含 DSH/Dify 契约、向量重试、Outbox 重放和乐观锁测试 |
 | Frontend | PASS | `npm run test:unit`（2/2）、`npm run build`、TypeScript 契约 `tsc --noEmit`；生产 JS chunks 全部低于 500 KB |
-| Data Pipeline | PASS | 18 tests；服务认证测试与 TypeScript typecheck 通过 |
-| DSH 客服插件 | PASS | customer-service focused gate：4 files / 8 tests；Gateway typecheck 和真实 keyless WebServer composition 通过 |
+| Data Pipeline | PASS | 26 tests；服务认证测试与 TypeScript typecheck 通过 |
+| DSH 客服插件 | PASS | customer-service focused gate：4 files / 10 tests；Gateway typecheck 和真实 keyless WebServer composition 通过 |
 
 ## 6. 阶段执行记录
 
 | 阶段 | 状态 | 提交 SHA | 测试 | 遗留项 |
 |---|---|---|---|---|
-| Phase 0 | DONE_LOCAL / PUSH_PENDING | `73d6fa93` | Backend 15/15；Frontend build；Pipeline 17/17 + typecheck | GitHub HTTPS 连接被重置；DSH 插件待 Phase 2 验证 |
-| Phase 1 | DONE_LOCAL / PUSH_PENDING | `c2c813bc` | Backend 23/23；Frontend build；Pipeline 18/18 + typecheck | GitHub HTTPS 连接被重置；WebSocket Ticket 与大 Chunk 分别在 Phase 2/5 处理 |
-| Phase 2 | DONE_LOCAL / PUSH_PENDING | 根仓库见 `phase-2`；DSH `b864a7756b` | Backend 27/27；DSH customer-service 4/4 + 三包 typecheck/build | GitHub 网络重置；共享多会话 DSH Worker 上线前必须改为 per-agent scoped capability；当前仅允许单客户隔离 Worker 灰度 |
+| Phase 0 | DONE_REMOTE | `73d6fa93` | Backend 15/15；Frontend build；Pipeline 17/17 + typecheck | 根仓库已推送；DSH 插件在 Phase 2 验证 |
+| Phase 1 | DONE_REMOTE | `c2c813bc` | Backend 23/23；Frontend build；Pipeline 18/18 + typecheck | 根仓库已推送；WebSocket Ticket 与大 Chunk 分别在 Phase 2/5 处理 |
+| Phase 2 | DONE_REMOTE | 根仓库 `c35d614f`；DSH 合并见 `079be0cce`（源分支基于 `b864a7756b`） | Backend 27/27；DSH customer-service 4/4 + 三包 typecheck/build | 共享多会话 DSH Worker 上线前必须改为 per-agent scoped capability；当前仅允许单客户隔离 Worker 灰度 |
 | Phase 3 | DONE_REMOTE / DEPLOYMENT_MIGRATION_PENDING | `4b463b49` | Data Pipeline 26/26 + typecheck；TS core/server 11/11 + typecheck/build；Python compileall | Java 记忆迁移需在部署环境执行；DSH 共享 Worker 仍需 per-agent capability |
-| Phase 4 | DONE_REMOTE / DSH_PERSONAL_REMOTE_PENDING / DEPLOYMENT_DRILL_PENDING | `84406775` | Backend interfaces 20/20 + backend-boot package；DSH focused 4 files / 10 tests + Gateway typecheck（本地独立仓库） | DSH 个人远端尚未配置；在目标 MySQL 执行 Flyway 基线、共享 Session 多实例恢复和 OTLP 端到端演练待部署环境 |
-| Phase 5 | DONE_LOCAL / CI_E2E_TOOLCHAIN_PENDING | 待提交 | Frontend unit 2/2、build、TypeScript contract check；JS chunks <500 KB | ESLint/Vitest/Playwright/Testcontainers/Agent Eval 依赖与灰度回滚门禁待 CI/部署环境 |
+| Phase 4 | DONE_REMOTE / DEPLOYMENT_DRILL_PENDING | `84406775`；DSH 合并见 `079be0cce` | Backend interfaces 20/20 + backend-boot package；DSH focused 4 files / 10 tests + Gateway typecheck | 在目标 MySQL 执行 Flyway 基线、共享 Session 多实例恢复和 OTLP 端到端演练待部署环境 |
+| Phase 5 | DONE_REMOTE / CI_E2E_TOOLCHAIN_PENDING | `564c74bc` | Frontend unit 2/2、build、TypeScript 5.9 contract check；最大 JS chunk 约 486 KB | ESLint/Vitest/Playwright/Testcontainers/Agent Eval 依赖与灰度回滚门禁待 CI/部署环境 |
 
 ## 7. 回滚规则
 

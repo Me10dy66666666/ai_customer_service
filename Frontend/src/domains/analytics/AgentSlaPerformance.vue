@@ -89,7 +89,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/shared/stores/authStore'
 import { useAgentInsightStore } from '@/shared/stores/agentInsightStore'
-import * as echarts from 'echarts'
+import echarts from '@/shared/charts/echarts'
 
 const authStore = useAuthStore()
 const store = useAgentInsightStore()

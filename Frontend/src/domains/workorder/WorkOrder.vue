@@ -203,7 +203,7 @@
             <span class="chat-popup-title">💬 工单 #{{ selected.id }} — {{ selected.userNickname || '用户#' + selected.userId }}</span>
             <div class="chat-popup-head-actions">
               <button class="chat-popup-end-btn" @click.stop="endMiniSession" :disabled="chatEnding">结束会话</button>
-              <button class="chat-popup-close-btn" @click="showMiniChat = false; stopChatPoll()">✕</button>
+              <button class="chat-popup-close-btn" @click="showMiniChat = false">✕</button>
             </div>
           </div>
           <div class="chat-popup-body" ref="miniChatBody">
@@ -333,11 +333,14 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 
 import { useWorkOrderStore } from '@/shared/stores/workOrderStore'
 import { useAuthStore } from '@/shared/stores/authStore'
+import { useAgentStore } from '@/shared/stores/agentStore'
+import { applyWorkOrderRealtimeEvent, chatMessageFromWorkOrderEvent } from '@/domains/workorder/workOrderRealtime'
 import http from '@/core/axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 
 const store = useWorkOrderStore()
 const authStore = useAuthStore()
+const agentStore = useAgentStore()
 
 const searchKeyword = ref('')
 const statusFilter = ref('all')
@@ -727,43 +730,6 @@ const openMiniChat = async () => {
   } catch (err) {
     if (import.meta.env.DEV) { console.error('Failed to connect session:', err) }
   }
-  chatStartTime.value = Date.now()
-  lastPollTime.value = 0
-  startChatPoll()
-}
-
-const startChatPoll = () => {
-  stopChatPoll()
-  chatPollTimer = setInterval(async () => {
-    if (!showMiniChat.value || !selected.value?.sessionId) { stopChatPoll(); return }
-    try {
-      const res = await http.get(`/api/chat/session/${selected.value.sessionId}/full-history?since=${encodeURIComponent(new Date(lastPollTime.value).toISOString())}`)
-      if (res.data.code === 200 && res.data.data) {
-        const newMessages = res.data.data
-          .filter(m => m.role === 'user')
-          .filter(m => {
-            const msgTime = m.time || m.createTime
-            return msgTime && new Date(msgTime).getTime() >= chatStartTime.value
-          })
-          .map(m => ({ role: 'user', content: m.content || '' }))
-        if (newMessages.length > 0) {
-          const existingContents = new Set(miniChatMessages.value.map(m => m.content))
-          const unique = newMessages.filter(m => !existingContents.has(m.content))
-          if (unique.length > 0) {
-            miniChatMessages.value.push(...unique)
-            nextTick(() => { if (miniChatBody.value) miniChatBody.value.scrollTop = miniChatBody.value.scrollHeight })
-          }
-        }
-      }
-      lastPollTime.value = Date.now()
-    } catch (ignored) {
-      if (import.meta.env.DEV) { console.debug('Chat poll skipped:', ignored) }
-    }
-  }, 2000)
-}
-
-const stopChatPoll = () => {
-  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null }
 }
 
 const sendMiniMsg = () => {
@@ -782,7 +748,6 @@ const sendMiniMsg = () => {
 const endMiniSession = async () => {
   if (!selected.value?.sessionId) return
   chatEnding.value = true
-  stopChatPoll()
   try {
     await http.post(`/api/work-orders/${selected.value.id}/close-session?agentId=${authStore.userId}`)
     miniChatMessages.value.push({ role: 'system', content: '服务结束' })
@@ -798,10 +763,18 @@ const endMiniSession = async () => {
 const refreshList = () => store.fetchAllWorkOrders()
 
 let slaTimer = null
-let pollTimer = null
-let chatPollTimer = null
-const lastPollTime = ref(0)
-const chatStartTime = ref(0)
+let stopRealtimeMessages = null
+let stopRealtimeConnection = null
+
+const onRealtimeMessage = (message) => {
+  const changed = applyWorkOrderRealtimeEvent(message, store.workOrders)
+  const chatMessage = chatMessageFromWorkOrderEvent(message, selected.value?.sessionId)
+  if (chatMessage && showMiniChat.value && !miniChatMessages.value.some(item => item.content === chatMessage.content)) {
+    miniChatMessages.value.push(chatMessage)
+    nextTick(() => { if (miniChatBody.value) miniChatBody.value.scrollTop = miniChatBody.value.scrollHeight })
+  }
+  if (changed) store.hasUnreadWoUpdate = true
+}
 
 const closeSlaDropdown = (e) => {
   if (!slaDropdownVisible.value && !createTypeOpen.value) return
@@ -823,14 +796,18 @@ watch(editingTags, (val) => { if (val) editTagsValue.value = selected.value?.tag
 onMounted(() => {
   store.fetchAllWorkOrders()
   slaTimer = setInterval(() => currentTimestamp.value = Date.now(), 1000)
-  pollTimer = setInterval(() => store.fetchAllWorkOrders(), 5000)
+  stopRealtimeMessages = agentStore.onMessage(onRealtimeMessage)
+  stopRealtimeConnection = agentStore.onConnectionChange(({ reconnected }) => {
+    if (reconnected) store.fetchAllWorkOrders(store.currentPage)
+  })
+  agentStore.connect().catch(() => {})
   document.addEventListener('click', closeSlaDropdown)
 })
 
 onBeforeUnmount(() => {
   if (slaTimer) { clearInterval(slaTimer); slaTimer = null }
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
-  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null }
+  stopRealtimeMessages?.()
+  stopRealtimeConnection?.()
   document.removeEventListener('click', closeSlaDropdown)
 })
 </script>

@@ -61,7 +61,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import * as echarts from 'echarts'
+import echarts from '@/shared/charts/echarts'
 import http from '@/core/axios'
 
 const loading = ref(true)

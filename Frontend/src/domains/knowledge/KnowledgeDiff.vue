@@ -62,7 +62,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 import * as knowledgeService from '@/domains/knowledge/knowledgeService'
 import http from '@/core/axios'
 

@@ -149,7 +149,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import * as knowledgeService from '@/domains/knowledge/knowledgeService'
