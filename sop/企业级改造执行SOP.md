@@ -84,7 +84,7 @@
 
 ### Phase 3：记忆与知识库治理
 
-状态：`PENDING`
+状态：`DONE_LOCAL（GITHUB_PUSH_PENDING）`
 
 范围：
 
@@ -157,7 +157,7 @@
 | Phase 0 | DONE_LOCAL / PUSH_PENDING | `73d6fa93` | Backend 15/15；Frontend build；Pipeline 17/17 + typecheck | GitHub HTTPS 连接被重置；DSH 插件待 Phase 2 验证 |
 | Phase 1 | DONE_LOCAL / PUSH_PENDING | `c2c813bc` | Backend 23/23；Frontend build；Pipeline 18/18 + typecheck | GitHub HTTPS 连接被重置；WebSocket Ticket 与大 Chunk 分别在 Phase 2/5 处理 |
 | Phase 2 | DONE_LOCAL / PUSH_PENDING | 根仓库见 `phase-2`；DSH `b864a7756b` | Backend 27/27；DSH customer-service 4/4 + 三包 typecheck/build | GitHub 网络重置；共享多会话 DSH Worker 上线前必须改为 per-agent scoped capability；当前仅允许单客户隔离 Worker 灰度 |
-| Phase 3 | PENDING | - | - | - |
+| Phase 3 | DONE_LOCAL / PUSH_PENDING | 待提交 | Data Pipeline 21/21 + typecheck；PDR/ACL/过期/版本测试通过 | 根仓库 GitHub 推送待网络确认；Java 记忆迁移需在部署环境执行；DSH 共享 Worker 仍需 per-agent capability |
 | Phase 4 | PENDING | - | - | - |
 | Phase 5 | PENDING | - | - | - |
 

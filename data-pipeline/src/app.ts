@@ -111,7 +111,10 @@ export async function buildApp(deps: AppDependencies): Promise<FastifyInstance> 
     const body = searchRequestSchema.parse(request.body);
     const sources = await manager.search({
       query: body.query,
-      limit: body.limit ?? config.searchLimit
+      limit: body.limit ?? config.searchLimit,
+      datasetId: body.datasetId,
+      knowledgeDomain: body.knowledgeDomain,
+      roles: body.roles
     });
     return { sources };
   });

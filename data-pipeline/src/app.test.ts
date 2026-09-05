@@ -33,6 +33,7 @@ const embedding: EmbeddingClient = {
 const vectorStore: VectorStore = {
   search: async () => [],
   add: async () => undefined,
+  getByIds: async () => [],
   deleteByDocument: async () => undefined,
   setEnabled: async () => undefined,
   clear: async () => undefined

@@ -18,6 +18,8 @@ export interface VectorSearchResult {
 export interface VectorStore {
   search(queryEmbedding: number[], limit: number): Promise<VectorSearchResult[]>;
   add(documents: StoredDocument[], embeddings: number[][]): Promise<void>;
+  /** 按父块 ID 回查完整上下文，向量库只是可重建投影。 */
+  getByIds(ids: string[]): Promise<StoredDocument[]>;
   /** 删除某文档的全部块。 */
   deleteByDocument(documentId: string): Promise<void>;
   /** 启用/停用某文档的全部块。 */

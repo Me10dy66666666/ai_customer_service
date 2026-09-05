@@ -41,6 +41,10 @@ class InMemoryVectorStore implements VectorStore {
     });
   }
 
+  public async getByIds(ids: string[]): Promise<StoredDocument[]> {
+    return this.items.filter((item) => ids.includes(item.id));
+  }
+
   public async deleteByDocument(documentId: string): Promise<void> {
     this.items = this.items.filter((item) => item.metadata.docId !== documentId);
   }
@@ -146,5 +150,51 @@ describe("KnowledgeBaseManager 闭环", () => {
     const sources = await manager.search({ query: "新内容", limit: 5 });
     expect(sources).toHaveLength(1);
     expect(sources[0]?.title).toBe("新.md");
+  });
+
+  it("PDR 会保存父块并在检索结果中返回父块引用元数据", async () => {
+    const manager = buildManager();
+    await manager.ingest({
+      filename: "长政策.md",
+      content: "# 退货政策\n\n" + "用户可在七天内申请无理由退货。".repeat(120),
+      datasetId: "default",
+      documentId: "doc-policy",
+      documentVersion: 3,
+      embeddingModel: "test-embedding",
+      knowledgeDomain: "after-sales"
+    });
+
+    const sources = await manager.search({
+      query: "退货政策",
+      limit: 5,
+      datasetId: "default",
+      knowledgeDomain: "after-sales"
+    });
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources[0]?.metadata.documentVersion).toBe("3");
+    expect(sources[0]?.metadata.parentRetrieved).toBe("true");
+  });
+
+  it("服务端过滤过期文档与角色不匹配文档", async () => {
+    const manager = buildManager();
+    await manager.ingest({
+      filename: "内部流程.md",
+      content: "客服内部升级流程。",
+      datasetId: "default",
+      allowedRoles: ["AGENT"],
+      knowledgeDomain: "internal",
+      expiresAt: "2020-01-01T00:00:00Z"
+    });
+    await manager.ingest({
+      filename: "公开FAQ.md",
+      content: "公开退货 FAQ。",
+      datasetId: "default",
+      allowedRoles: ["PUBLIC"],
+      knowledgeDomain: "public"
+    });
+
+    expect(await manager.search({ query: "流程", limit: 5, roles: ["USER"], knowledgeDomain: "internal" })).toHaveLength(0);
+    expect(await manager.search({ query: "流程", limit: 5, roles: ["AGENT"], knowledgeDomain: "internal" })).toHaveLength(0);
+    expect(await manager.search({ query: "退货", limit: 5, roles: ["USER"] })).toHaveLength(1);
   });
 });

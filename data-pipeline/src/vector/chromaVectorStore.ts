@@ -56,6 +56,20 @@ export class ChromaVectorStore implements VectorStore {
     });
   }
 
+  public async getByIds(ids: string[]): Promise<StoredDocument[]> {
+    if (ids.length === 0) return [];
+    const collection = await this.getOrCreateCollection();
+    const result = await collection.get({
+      ids,
+      include: ["metadatas", "documents"]
+    });
+    return result.ids.map((id, index) => ({
+      id,
+      content: result.documents?.[index] ?? "",
+      metadata: this.cleanMetadata(result.metadatas?.[index] ?? {})
+    }));
+  }
+
   public async deleteByDocument(documentId: string): Promise<void> {
     try {
       const collection = await this.getOrCreateCollection();
@@ -73,7 +87,10 @@ export class ChromaVectorStore implements VectorStore {
       if (ids.length === 0) return;
       await collection.update({
         ids,
-        metadatas: ids.map(() => ({ enabled: String(enabled) }))
+        metadatas: ids.map((_, index) => ({
+          ...this.cleanMetadata(existing.metadatas?.[index] ?? {}),
+          enabled: String(enabled)
+        }))
       });
     } catch {
       // 忽略错误
