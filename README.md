@@ -51,11 +51,12 @@ Backend/                  Spring Boot 多模块业务后端
   sql/                     MySQL 初始化与迁移
 Frontend/                 Vue 3 + Vite 客户端
 data-pipeline/            文件解析、分块、Embedding、pgvector HTTP 服务
-ts-enterprise-webagent/   协议兼容的 TypeScript Agent 服务与核心适配器
 deepseek-harness/         独立 DSH 源码仓库及客服组合
-LangChain-AI/             可选 Python 工作流；通过 data-pipeline 使用同一 pgvector 知识服务
+history/                  历史归档，不参与当前构建、启动或测试
 ENGINEERING_AUDIT.md      本次工程审计、改造和验证记录
 ```
+
+`history/` 当前包含已停用的 `ts-enterprise-webagent`、`LangChain-AI` 和 `agent-management-ui`，仅作历史留档。
 
 ## 环境要求
 
@@ -63,7 +64,7 @@ ENGINEERING_AUDIT.md      本次工程审计、改造和验证记录
 | --- | --- |
 | JDK | 21+ |
 | Maven | 3.9+ |
-| Node.js | data-pipeline/TS Agent 使用 22+；DSH 使用 22.19+ 或 24+ |
+| Node.js | data-pipeline 使用 22+；DSH 使用 22.19+ 或 24+ |
 | Docker Compose | 用于 PostgreSQL、Redis、RabbitMQ、Elasticsearch |
 | PostgreSQL | 16，镜像需包含 pgvector 扩展 |
 | MySQL | 8.0+ |
@@ -157,12 +158,6 @@ Agent 工具只允许：
 cd data-pipeline
 npm run typecheck
 npm test -- --run
-npm run build
-
-# TypeScript Agent compatibility service
-cd ts-enterprise-webagent
-npm run typecheck
-npm test
 npm run build
 
 # DSH host aggregate

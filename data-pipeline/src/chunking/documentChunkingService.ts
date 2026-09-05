@@ -21,7 +21,6 @@ export interface ChunkingOptions {
 /**
  * 文档分块服务
  *
- * 从 ts-enterprise-webagent 抽出的既有实现：
  * - 主策略：递归分块（chunk_size=800, overlap=150）
  * - 增强策略：父文档检索（PDR）
  * - 分割符针对中文 FAQ/政策文档优化

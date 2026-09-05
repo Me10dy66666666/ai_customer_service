@@ -60,7 +60,7 @@ Thumbs.db
 target/
 
 # ============================================================
-# Node.js / TypeScript（ts-enterprise-webagent · Frontend）
+# Node.js / TypeScript（Frontend · data-pipeline · DeepSeek Harness）
 # ============================================================
 node_modules/
 dist/
@@ -74,6 +74,9 @@ coverage/
 .env.local
 .env.*.local
 
+# 历史归档，不参与项目版本控制
+history/
+
 # npm 调试日志
 npm-debug.log*
 yarn-debug.log*
@@ -86,11 +89,6 @@ pnpm-debug.log*
 Frontend/node_modules/
 Frontend/dist/
 Frontend/.vite/
-
-# ============================================================
-# Agent Management UI 专属
-# ============================================================
-agent-management-ui/node_modules/
 
 # ============================================================
 # Backend 专属

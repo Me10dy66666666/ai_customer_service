@@ -1,7 +1,0 @@
-node_modules/
-dist/
-.turbo/
-.vite/
-coverage/
-.env
-.env.local
