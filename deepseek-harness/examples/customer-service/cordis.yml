@@ -1,0 +1,57 @@
+# Customer-service agent: DeepSeek + knowledge search, headless via ACP.
+# Runs with `DEEPSEEK_API_KEY` (and optional `DEEPSEEK_BASE_URL`) from the environment.
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek'
+  config:
+    models:
+      - id: deepseek-v4-flash
+      - id: deepseek-v4-pro
+
+- id: search-knowledge
+  name: '@deepseek-ai/dsh-tool-search-knowledge'
+  config:
+    dataPipelineBaseUrl: !!js process.env.DATA_PIPELINE_URL ?? 'http://localhost:3002'
+    serviceToken: !!js process.env.PIPELINE_SERVICE_TOKEN
+    timeoutMs: 5000
+
+- id: timeout-policy
+  name: '@deepseek-ai/dsh-tool-call-timeout-policy'
+
+- id: repeat-tool-reminder
+  name: '@deepseek-ai/dsh-repeat-tool-reminder'
+  config:
+    thresholds: [3, 5]
+
+- id: customer-service-budget-guard
+  name: '@deepseek-ai/dsh-customer-service-budget-guard'
+  config:
+    maxStepsPerTurn: 6
+    maxToolCallsPerTurn: 8
+
+- id: web-server
+  name: '@deepseek-ai/dsh-host-webserver'
+  config:
+    host: '127.0.0.1'
+    port: !!js "Number(process.env.DSH_GATEWAY_PORT ?? 3001)"
+
+- id: acp-agent
+  name: '@deepseek-ai/dsh-acp-demo'
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-pro
+    customerServiceGateway:
+      provider: deepseek-official
+      model: deepseek-v4-pro
+      serviceToken: !!js process.env.DSH_GATEWAY_SERVICE_TOKEN
+      pathPrefix: '/api/v1/customer-service'
+      maxBodyBytes: 262144
+      customerServiceBackendBaseUrl: !!js process.env.BACKEND_BASE_URL ?? 'http://localhost:8081'
+      customerServiceCapabilityToken: !!js process.env.AGENT_CAPABILITY_TOKEN ?? ''
+      customerServiceToolTimeoutMs: 5000
+    persistenceRoot: !!js process.env.DSH_SNAPSHOT_SESSIONS_ROOT ?? './.sessions'
+    persona: |
+      You are a customer-service assistant. Answer questions using the search_knowledge
+      tool against the knowledge base, and cite the returned sources in your answer.
+      Never ask for or infer a user ID. Identity is bound by the host capability. A work-order
+      tool creates only a proposal; clearly ask the customer to confirm it in the product UI.
