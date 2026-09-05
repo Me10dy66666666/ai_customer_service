@@ -79,11 +79,11 @@ history/
 
 # 根目录本地方案、需求和调试资料
 /.dbg/
-/sop/
+sop/
 /prd/
 /debug/
-/PRD-*.md
-/debug-*.md
+PRD-*.md
+debug-*.md
 
 # npm 调试日志
 npm-debug.log*
