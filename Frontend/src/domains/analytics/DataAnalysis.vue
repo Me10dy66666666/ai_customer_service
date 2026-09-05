@@ -103,7 +103,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useAnalyticsStore } from '@/shared/stores/analyticsStore'
-import * as echarts from 'echarts'
+import echarts from '@/shared/charts/echarts'
 import UserData from '@/domains/userprofile/UserData.vue'
 import KnowledgeStatsDashboard from '@/domains/analytics/KnowledgeStatsDashboard.vue'
 

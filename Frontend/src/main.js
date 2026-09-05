@@ -1,5 +1,5 @@
 import { createApp } from 'vue'
-import ElementPlus from 'element-plus'
+import { ElDatePicker } from 'element-plus/es/components/date-picker/index.mjs'
 import 'element-plus/dist/index.css'
 import '@/styles/design-tokens.css'
 import pinia from './core/pinia'
@@ -13,5 +13,5 @@ const app = createApp(App)
 
 app.use(pinia)
 app.use(router)
-app.use(ElementPlus)
+app.component('ElDatePicker', ElDatePicker)
 app.mount('#app')

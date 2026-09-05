@@ -44,8 +44,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useUserProfileStore } from '@/shared/stores/userProfileStore'
-import * as echarts from 'echarts'
-import { ElMessage } from 'element-plus'
+import echarts from '@/shared/charts/echarts'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
 
 const store = useUserProfileStore()
 const filters = reactive({ userType: 'All', userId: '' })

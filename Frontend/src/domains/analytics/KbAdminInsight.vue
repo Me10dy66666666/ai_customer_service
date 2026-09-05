@@ -103,7 +103,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/shared/stores/authStore'
 import { useKbAdminInsightStore } from '@/shared/stores/kbAdminInsightStore'
-import * as echarts from 'echarts'
+import echarts from '@/shared/charts/echarts'
 
 const authStore = useAuthStore()
 const store = useKbAdminInsightStore()

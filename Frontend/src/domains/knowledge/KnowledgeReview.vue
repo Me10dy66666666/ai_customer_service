@@ -188,7 +188,8 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index.mjs'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index.mjs'
 import SegmentEditor from '@/domains/knowledge/SegmentEditor.vue'
 import http from '@/core/axios'
 import * as knowledgeService from '@/domains/knowledge/knowledgeService'
