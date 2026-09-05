@@ -463,15 +463,6 @@ importers:
       '@deepseek-ai/dsh-command-goal':
         specifier: workspace:*
         version: link:../packages/goal/command-goal
-      '@deepseek-ai/dsh-tool-customer-service':
-        specifier: workspace:*
-        version: link:../packages/customer-service/tool-customer-service
-      '@deepseek-ai/dsh-customer-service-budget-guard':
-        specifier: workspace:*
-        version: link:../packages/customer-service/agent-budget-guard
-      '@deepseek-ai/dsh-tool-search-knowledge':
-        specifier: workspace:*
-        version: link:../packages/customer-service/tool-search-knowledge
       '@deepseek-ai/dsh-commands':
         specifier: workspace:*
         version: link:../packages/interaction/commands
@@ -490,6 +481,12 @@ importers:
       '@deepseek-ai/dsh-credentials-local':
         specifier: workspace:*
         version: link:../packages/credentials/credentials-local
+      '@deepseek-ai/dsh-customer-service-budget-guard':
+        specifier: workspace:*
+        version: link:../packages/customer-service/agent-budget-guard
+      '@deepseek-ai/dsh-customer-service-gateway':
+        specifier: workspace:*
+        version: link:../packages/customer-service/customer-service-gateway
       '@deepseek-ai/dsh-e2b':
         specifier: workspace:*
         version: link:../packages/e2b/e2b
@@ -685,6 +682,9 @@ importers:
       '@deepseek-ai/dsh-tool-cordis':
         specifier: workspace:*
         version: link:../packages/extensions/tool-cordis
+      '@deepseek-ai/dsh-tool-customer-service':
+        specifier: workspace:*
+        version: link:../packages/customer-service/tool-customer-service
       '@deepseek-ai/dsh-tool-fs':
         specifier: workspace:*
         version: link:../packages/fs/tool-fs
@@ -709,6 +709,9 @@ importers:
       '@deepseek-ai/dsh-tool-ralph':
         specifier: workspace:*
         version: link:../packages/workflow/tool-ralph
+      '@deepseek-ai/dsh-tool-search-knowledge':
+        specifier: workspace:*
+        version: link:../packages/customer-service/tool-search-knowledge
       '@deepseek-ai/dsh-tool-session-query':
         specifier: workspace:*
         version: link:../packages/session-query/tool-session-query
@@ -3878,7 +3881,7 @@ importers:
   packages/customer-service/agent-budget-guard:
     dependencies:
       '@deepseek-ai/schemastery':
-        specifier: workspace:^
+        specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
     devDependencies:
       '@deepseek-ai/cordis':
@@ -3893,6 +3896,34 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
+
+  packages/customer-service/customer-service-gateway:
+    dependencies:
+      '@deepseek-ai/dsh-tool-customer-service':
+        specifier: workspace:^
+        version: link:../tool-customer-service
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:^
+        version: link:../../core/agent
+      '@deepseek-ai/dsh-host-webserver':
+        specifier: workspace:^
+        version: link:../../host/webserver
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:^
+        version: link:../../core/session
 
   packages/customer-service/tool-customer-service:
     dependencies:
@@ -4015,6 +4046,9 @@ importers:
       '@deepseek-ai/dsh-app-boot':
         specifier: workspace:^
         version: link:../../boot/app-boot
+      '@deepseek-ai/dsh-customer-service-gateway':
+        specifier: workspace:^
+        version: link:../../customer-service/customer-service-gateway
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
