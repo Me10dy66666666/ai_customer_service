@@ -61,12 +61,13 @@ public class KnowledgeOutboxProcessor {
         if (!outboxRepository.updateToProcessing(entry.getId())) {
             return;
         }
+        Path tempFile = null;
         try {
             Map<String, Object> payload = objectMapper.readValue(entry.getPayload(), Map.class);
             String title = (String) payload.getOrDefault("title", "document");
             String content = (String) payload.getOrDefault("content", "");
 
-            Path tempFile = Files.createTempFile("dify-outbox-", ".md");
+            tempFile = Files.createTempFile("dify-outbox-", ".md");
             try (FileOutputStream fos = new FileOutputStream(tempFile.toFile())) {
                 fos.write(content.getBytes(StandardCharsets.UTF_8));
             }
@@ -83,7 +84,6 @@ public class KnowledgeOutboxProcessor {
                 esIndexService.indexDocument(doc);
             }
 
-            Files.deleteIfExists(tempFile);
             log.info("Outbox retry success: outboxId={}, difyDocId={}", entry.getId(), difyDocId);
 
         } catch (Exception e) {
@@ -96,6 +96,15 @@ public class KnowledgeOutboxProcessor {
                 long delaySec = (long) Math.pow(2, entry.getRetryCount()) * 10;
                 LocalDateTime nextRetry = LocalDateTime.now().plusSeconds(delaySec);
                 outboxRepository.scheduleRetry(entry.getId(), nextRetry, e.getMessage());
+            }
+        } finally {
+            if (tempFile != null) {
+                try {
+                    Files.deleteIfExists(tempFile);
+                } catch (Exception cleanupError) {
+                    log.warn("Failed to clean temporary outbox file: path={}, error={}",
+                            tempFile, cleanupError.getMessage());
+                }
             }
         }
     }

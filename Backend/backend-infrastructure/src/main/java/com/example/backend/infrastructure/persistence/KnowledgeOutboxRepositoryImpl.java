@@ -3,11 +3,14 @@ package com.example.backend.infrastructure.persistence;
 import com.example.backend.domain.knowledge.model.KnowledgeOutbox;
 import com.example.backend.domain.knowledge.repository.KnowledgeOutboxRepository;
 import com.example.backend.infrastructure.persistence.mapper.KnowledgeOutboxMapper;
+import com.example.backend.infrastructure.persistence.entity.KnowledgeOutboxEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
@@ -17,7 +20,13 @@ public class KnowledgeOutboxRepositoryImpl implements KnowledgeOutboxRepository 
 
     @Override
     public void save(KnowledgeOutbox outbox) {
-        mapper.insert(toEntity(outbox));
+        if (outbox.getEventId() == null || outbox.getEventId().isBlank()) {
+            String identity = outbox.getDocumentId() + "|" + outbox.getEventType() + "|" + outbox.getPayload();
+            outbox.setEventId(UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8)).toString());
+        }
+        KnowledgeOutboxEntity entity = toEntity(outbox);
+        mapper.insert(entity);
+        outbox.setId(entity.getId());
     }
 
     @Override
@@ -47,6 +56,11 @@ public class KnowledgeOutboxRepositoryImpl implements KnowledgeOutboxRepository 
     }
 
     @Override
+    public boolean replayFailed(Long id, LocalDateTime nextRetryAt) {
+        return mapper.replayFailed(id, nextRetryAt) > 0;
+    }
+
+    @Override
     public void deleteByDocumentId(Long documentId) {
         mapper.deleteByDocumentId(documentId);
     }
@@ -54,6 +68,7 @@ public class KnowledgeOutboxRepositoryImpl implements KnowledgeOutboxRepository 
     private KnowledgeOutbox toDomain(com.example.backend.infrastructure.persistence.entity.KnowledgeOutboxEntity po) {
         KnowledgeOutbox outbox = new KnowledgeOutbox();
         outbox.setId(po.getId());
+        outbox.setEventId(po.getEventId());
         outbox.setDocumentId(po.getDocumentId());
         outbox.setEventType(po.getEventType());
         outbox.setPayload(po.getPayload());
@@ -63,6 +78,8 @@ public class KnowledgeOutboxRepositoryImpl implements KnowledgeOutboxRepository 
         outbox.setLastError(po.getLastError());
         outbox.setCreatedAt(po.getCreatedAt());
         outbox.setNextRetryAt(po.getNextRetryAt());
+        outbox.setLockedAt(po.getLockedAt());
+        outbox.setCompletedAt(po.getCompletedAt());
         return outbox;
     }
 
@@ -70,6 +87,7 @@ public class KnowledgeOutboxRepositoryImpl implements KnowledgeOutboxRepository 
         com.example.backend.infrastructure.persistence.entity.KnowledgeOutboxEntity po =
                 new com.example.backend.infrastructure.persistence.entity.KnowledgeOutboxEntity();
         po.setDocumentId(outbox.getDocumentId());
+        po.setEventId(outbox.getEventId());
         po.setEventType(outbox.getEventType());
         po.setPayload(outbox.getPayload());
         po.setStatus(outbox.getStatus());
@@ -77,6 +95,8 @@ public class KnowledgeOutboxRepositoryImpl implements KnowledgeOutboxRepository 
         po.setMaxRetry(outbox.getMaxRetry());
         po.setLastError(outbox.getLastError());
         po.setNextRetryAt(outbox.getNextRetryAt());
+        po.setLockedAt(outbox.getLockedAt());
+        po.setCompletedAt(outbox.getCompletedAt());
         return po;
     }
 }

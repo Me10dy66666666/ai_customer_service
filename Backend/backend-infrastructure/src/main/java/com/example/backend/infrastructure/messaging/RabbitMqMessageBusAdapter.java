@@ -74,20 +74,17 @@ public class RabbitMqMessageBusAdapter implements MessageBusPort {
 
         @Bean
         Queue chatAsyncQueue() {
-            return QueueBuilder.durable(CHAT_ASYNC_QUEUE).build();
+            return durableWithDlq(CHAT_ASYNC_QUEUE);
         }
 
         @Bean
         Queue sessionClosedQueue() {
-            return QueueBuilder.durable(SESSION_CLOSED_QUEUE).build();
+            return durableWithDlq(SESSION_CLOSED_QUEUE);
         }
 
         @Bean
         Queue ocrQueue() {
-            return QueueBuilder.durable(OCR_QUEUE)
-                    .withArgument("x-dead-letter-exchange", "")
-                    .withArgument("x-dead-letter-routing-key", OCR_QUEUE + ".dlq")
-                    .build();
+            return durableWithDlq(OCR_QUEUE);
         }
 
         @Bean
@@ -112,10 +109,7 @@ public class RabbitMqMessageBusAdapter implements MessageBusPort {
 
         @Bean
         Queue difyUploadQueue() {
-            return QueueBuilder.durable(DIFY_UPLOAD_QUEUE)
-                    .withArgument("x-dead-letter-exchange", "")
-                    .withArgument("x-dead-letter-routing-key", DIFY_UPLOAD_QUEUE + ".dlq")
-                    .build();
+            return durableWithDlq(DIFY_UPLOAD_QUEUE);
         }
 
         @Bean
@@ -126,6 +120,16 @@ public class RabbitMqMessageBusAdapter implements MessageBusPort {
         @Bean
         Binding difyUploadBinding(Queue difyUploadQueue, TopicExchange asyncExchange) {
             return BindingBuilder.bind(difyUploadQueue).to(asyncExchange).with("knowledge.dify");
+        }
+
+        @Bean Queue chatAsyncDlq() { return QueueBuilder.durable(CHAT_ASYNC_QUEUE + ".dlq").build(); }
+        @Bean Queue sessionClosedDlq() { return QueueBuilder.durable(SESSION_CLOSED_QUEUE + ".dlq").build(); }
+
+        private Queue durableWithDlq(String queueName) {
+            return QueueBuilder.durable(queueName)
+                    .withArgument("x-dead-letter-exchange", "")
+                    .withArgument("x-dead-letter-routing-key", queueName + ".dlq")
+                    .build();
         }
     }
 

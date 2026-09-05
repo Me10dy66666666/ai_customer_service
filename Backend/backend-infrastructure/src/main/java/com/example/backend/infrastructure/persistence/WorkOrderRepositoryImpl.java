@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
+import java.util.ConcurrentModificationException;
 
 @Repository
 @RequiredArgsConstructor
@@ -19,7 +20,12 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
     @Override
     public WorkOrder save(WorkOrder workOrder) {
         com.example.backend.infrastructure.persistence.entity.WorkOrder po = toEntity(workOrder);
-        if (workOrder.getId() == null) mapper.insert(po); else mapper.update(po);
+        if (workOrder.getId() == null) {
+            mapper.insert(po);
+        } else if (mapper.update(po) == 0) {
+            throw new ConcurrentModificationException(
+                    "Work order was modified concurrently: " + workOrder.getId());
+        }
         return toDomain(mapper.selectById(po.getId()));
     }
 
@@ -96,6 +102,7 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
         wo.setResolverId(po.getResolverId());
         wo.setExcludeFromSla(po.getExcludeFromSla() != null && po.getExcludeFromSla() == 1);
         wo.setCreateTime(po.getCreateTime()); wo.setUpdateTime(po.getUpdateTime());
+        wo.setLockVersion(po.getLockVersion());
         return wo;
     }
 
@@ -116,6 +123,7 @@ public class WorkOrderRepositoryImpl implements WorkOrderRepository {
         po.setFirstResponderId(wo.getFirstResponderId());
         po.setResolverId(wo.getResolverId());
         po.setExcludeFromSla(wo.isExcludeFromSla() ? 1 : 0);
+        po.setLockVersion(wo.getLockVersion());
         return po;
     }
 }

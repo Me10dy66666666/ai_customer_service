@@ -60,6 +60,20 @@ public class WorkOrderApplicationService {
         return saved;
     }
 
+    /**
+     * Execute a previously displayed Agent proposal after the authenticated
+     * customer confirms it in the product UI. The Agent can only create the
+     * proposal; it never receives this command path.
+     */
+    @Transactional
+    public WorkOrder createCustomerConfirmedWorkOrder(Long userId, String sessionId,
+                                                       String title, String description,
+                                                       String type, String priority) {
+        WorkOrder workOrder = WorkOrder.create(userId, title, description, type, priority);
+        workOrder.setSessionId(sessionId);
+        return createWorkOrder(workOrder, null);
+    }
+
     public List<WorkOrder> findByUserId(Long userId) {
         return workOrderRepository.findByUserId(userId);
     }
@@ -231,7 +245,9 @@ public class WorkOrderApplicationService {
             throw new BusinessException("无权评价此工单");
         }
         wo.setRating(rating);
-        workOrderMapper.update(wo);
+        if (workOrderMapper.update(wo) == 0) {
+            throw new BusinessException("工单已被其他操作更新，请刷新后重试");
+        }
     }
 
     public List<WorkOrderAuditLog> getAuditLogs(Long workOrderId, boolean userVisibleOnly) {

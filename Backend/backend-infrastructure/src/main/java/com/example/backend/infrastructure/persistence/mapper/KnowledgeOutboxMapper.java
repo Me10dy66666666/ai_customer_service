@@ -16,5 +16,6 @@ public interface KnowledgeOutboxMapper {
     int scheduleRetry(@Param("id") Long id, @Param("nextRetryAt") LocalDateTime nextRetryAt,
                       @Param("lastError") String lastError);
     int markFailed(@Param("id") Long id, @Param("lastError") String lastError);
+    int replayFailed(@Param("id") Long id, @Param("nextRetryAt") LocalDateTime nextRetryAt);
     int deleteByDocumentId(@Param("documentId") Long documentId);
 }

@@ -12,5 +12,6 @@ public interface KnowledgeOutboxRepository {
     void markCompleted(Long id);
     void scheduleRetry(Long id, LocalDateTime nextRetryAt, String errorMessage);
     void markFailed(Long id, String errorMessage);
+    boolean replayFailed(Long id, LocalDateTime nextRetryAt);
     void deleteByDocumentId(Long documentId);
 }

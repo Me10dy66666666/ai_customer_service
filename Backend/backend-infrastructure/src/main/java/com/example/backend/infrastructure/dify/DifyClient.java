@@ -2,14 +2,13 @@ package com.example.backend.infrastructure.dify;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.backend.infrastructure.resilience.ExternalCallRetryPolicy;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
-import org.apache.hc.core5.util.TimeValue;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
@@ -38,16 +37,17 @@ public class DifyClient {
     @Value("${dify.knowledge.key}") private String datasetApiKey;
     @Value("${dify.chat.key}") private String chatApiKey;
     @Value("${dify.chat.timeout:10000}") private int apiTimeout;
-    @Value("${dify.chat.retry:3}") private int apiRetry;
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REF =
             new TypeReference<Map<String, Object>>() {};
 
     private RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final ExternalCallRetryPolicy retryPolicy;
 
-    public DifyClient(ObjectMapper objectMapper) {
+    public DifyClient(ObjectMapper objectMapper, ExternalCallRetryPolicy retryPolicy) {
         this.objectMapper = objectMapper;
+        this.retryPolicy = retryPolicy;
     }
 
     @PostConstruct
@@ -66,13 +66,10 @@ public class DifyClient {
                 .setConnectionRequestTimeout(apiTimeout, TimeUnit.MILLISECONDS)
                 .build();
 
-        DefaultHttpRequestRetryStrategy retryStrategy = new DefaultHttpRequestRetryStrategy(
-                apiRetry, TimeValue.ofSeconds(1));
-
         CloseableHttpClient httpClient = HttpClients.custom()
                 .setConnectionManager(connectionManager)
                 .setDefaultRequestConfig(requestConfig)
-                .setRetryStrategy(retryStrategy)
+                .disableAutomaticRetries()
                 .build();
 
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
@@ -81,7 +78,8 @@ public class DifyClient {
 
     private <T> T parseResponse(ResponseEntity<String> response, TypeReference<T> typeRef) {
         if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new DifyApiException("Dify API error: " + response.getStatusCode());
+            throw new DifyApiException("Dify API error: " + response.getStatusCode(),
+                    response.getStatusCode().value());
         }
         try {
             return objectMapper.readValue(response.getBody(), typeRef);
@@ -91,6 +89,11 @@ public class DifyClient {
     }
 
     public String uploadFile(File file, String filename, String datasetId) {
+        return retryPolicy.executeNonIdempotent("dify.uploadFile",
+                () -> uploadFileOnce(file, filename, datasetId));
+    }
+
+    private String uploadFileOnce(File file, String filename, String datasetId) {
         String url = baseUrl + API_BASE_PATH + datasetId + "/document/create_by_file";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -129,8 +132,14 @@ public class DifyClient {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HEADER_AUTHORIZATION, BEARER_PREFIX + datasetApiKey);
         HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
-        try { restTemplate.exchange(url, HttpMethod.DELETE, requestEntity, Void.class); }
-        catch (Exception e) { throw new DifyApiException("Error deleting document from Dify: " + e.getMessage(), e); }
+        retryPolicy.executeIdempotent("dify.deleteDocument", () -> {
+            try {
+                restTemplate.exchange(url, HttpMethod.DELETE, requestEntity, Void.class);
+                return null;
+            } catch (Exception e) {
+                throw new DifyApiException("Error deleting document from Dify: " + e.getMessage(), e);
+            }
+        });
     }
 
     public Map<String, Object> getDataset(String datasetId) {
@@ -138,11 +147,15 @@ public class DifyClient {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HEADER_AUTHORIZATION, BEARER_PREFIX + datasetApiKey);
         HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, String.class);
-            return parseResponse(response, MAP_TYPE_REF);
-        } catch (DifyApiException e) { throw e; }
-        catch (Exception e) { throw new DifyApiException("Error getting dataset info from Dify: " + e.getMessage(), e); }
+        return retryPolicy.executeIdempotent("dify.getDataset", () -> {
+            try {
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, String.class);
+                return parseResponse(response, MAP_TYPE_REF);
+            } catch (DifyApiException e) { throw e; }
+            catch (Exception e) {
+                throw new DifyApiException("Error getting dataset info from Dify: " + e.getMessage(), e);
+            }
+        });
     }
 
     public void updateDocumentStatus(String datasetId, String documentId, boolean enable) {
@@ -177,11 +190,15 @@ public class DifyClient {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HEADER_AUTHORIZATION, BEARER_PREFIX + datasetApiKey);
         HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, String.class);
-            return parseResponse(response, MAP_TYPE_REF);
-        } catch (DifyApiException e) { throw e; }
-        catch (Exception e) { throw new DifyApiException("Error listing documents from Dify: " + e.getMessage(), e); }
+        return retryPolicy.executeIdempotent("dify.listDocuments", () -> {
+            try {
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, String.class);
+                return parseResponse(response, MAP_TYPE_REF);
+            } catch (DifyApiException e) { throw e; }
+            catch (Exception e) {
+                throw new DifyApiException("Error listing documents from Dify: " + e.getMessage(), e);
+            }
+        });
     }
 
     public List<Map<String, Object>> listAllDocuments(String datasetId) {
@@ -207,6 +224,14 @@ public class DifyClient {
 
     public void sendStreamingMessage(String query, String user, String conversationId,
                                       Map<String, Object> inputs, Consumer<String> onData, Consumer<String> onError) {
+        retryPolicy.executeNonIdempotent("dify.sendStreamingMessage", () -> {
+            sendStreamingMessageOnce(query, user, conversationId, inputs, onData, onError);
+            return null;
+        });
+    }
+
+    private void sendStreamingMessageOnce(String query, String user, String conversationId,
+                                           Map<String, Object> inputs, Consumer<String> onData, Consumer<String> onError) {
         String url = baseUrl + "/chat-messages";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -233,6 +258,12 @@ public class DifyClient {
     }
 
     public Map<String, String> sendMessage(String query, String user, String conversationId, Map<String, Object> inputs) {
+        return retryPolicy.executeNonIdempotent("dify.sendMessage",
+                () -> sendMessageOnce(query, user, conversationId, inputs));
+    }
+
+    private Map<String, String> sendMessageOnce(String query, String user, String conversationId,
+                                                Map<String, Object> inputs) {
         String url = baseUrl + "/chat-messages";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

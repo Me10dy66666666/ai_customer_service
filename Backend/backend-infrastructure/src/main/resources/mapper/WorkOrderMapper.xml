@@ -30,10 +30,11 @@
         <result column="resolver_id" property="resolverId" />
         <result column="exclude_from_sla" property="excludeFromSla" />
         <result column="rating" property="rating" />
+        <result column="lock_version" property="lockVersion" />
         <result column="create_time" property="createTime" />
         <result column="update_time" property="updateTime" />
     </resultMap>
-    <sql id="Base_Column_List">id, user_id, title, description, type, priority, status, handler_id, user_phone, user_nickname, result, tags, summary, session_id, matching_skill, dispatch_confidence, biz_tag, emotion_level, sla_deadline, response_deadline, responded_at, sla_paused, effective_response_seconds, effective_resolution_seconds, first_responder_id, resolver_id, exclude_from_sla, rating, create_time, update_time</sql>
+    <sql id="Base_Column_List">id, user_id, title, description, type, priority, status, handler_id, user_phone, user_nickname, result, tags, summary, session_id, matching_skill, dispatch_confidence, biz_tag, emotion_level, sla_deadline, response_deadline, responded_at, sla_paused, effective_response_seconds, effective_resolution_seconds, first_responder_id, resolver_id, exclude_from_sla, rating, lock_version, create_time, update_time</sql>
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO work_orders (user_id, title, description, type, priority, status, handler_id, user_phone, user_nickname, result, tags, summary, session_id, matching_skill, dispatch_confidence, biz_tag, emotion_level, sla_deadline, response_deadline, responded_at, sla_paused, effective_response_seconds, effective_resolution_seconds, first_responder_id, resolver_id, exclude_from_sla, rating, create_time, update_time)
         VALUES (#{userId}, #{title}, #{description}, #{type}, #{priority}, #{status}, #{handlerId}, #{userPhone}, #{userNickname}, #{result}, #{tags}, #{summary}, #{sessionId}, #{matchingSkill}, #{dispatchConfidence}, #{bizTag}, #{emotionLevel}, #{slaDeadline}, #{responseDeadline}, #{respondedAt}, 0, null, null, null, null, 0, #{rating}, NOW(), NOW())
@@ -65,9 +66,10 @@
             <if test="resolverId != null">resolver_id = #{resolverId},</if>
             <if test="excludeFromSla != null">exclude_from_sla = #{excludeFromSla},</if>
             <if test="rating != null">rating = #{rating},</if>
+            lock_version = lock_version + 1,
             update_time = NOW()
         </set>
-        WHERE id = #{id}
+        WHERE id = #{id} AND lock_version = #{lockVersion}
     </update>
     <delete id="deleteById">DELETE FROM work_orders WHERE id = #{id}</delete>
     <select id="selectById" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE id = #{id}</select>
@@ -93,7 +95,7 @@
     <select id="findByHandlerId" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE handler_id = #{handlerId}</select>
     <select id="findUnassigned" resultMap="BaseResultMap">SELECT <include refid="Base_Column_List"/> FROM work_orders WHERE handler_id IS NULL AND status = #{pendingStatus} ORDER BY FIELD(priority, 'high', 'medium', 'low'), create_time ASC</select>
     <select id="countActiveByHandlerId" resultType="int">SELECT COUNT(*) FROM work_orders WHERE handler_id = #{handlerId} AND status IN (#{pendingStatus}, #{processingStatus})</select>
-    <update id="claimWorkOrder">UPDATE work_orders SET handler_id = #{handlerId}, status = #{processingStatus}, dispatched_at = NOW(), update_time = NOW() WHERE id = #{id} AND handler_id IS NULL AND status = #{pendingStatus}</update>
+    <update id="claimWorkOrder">UPDATE work_orders SET handler_id = #{handlerId}, status = #{processingStatus}, dispatched_at = NOW(), lock_version = lock_version + 1, update_time = NOW() WHERE id = #{id} AND handler_id IS NULL AND status = #{pendingStatus}</update>
     <select id="countByStatusBetween" resultType="java.util.Map">
         SELECT status AS statusKey, COUNT(*) AS totalCount FROM work_orders WHERE create_time BETWEEN #{start} AND #{end} GROUP BY status
     </select>
