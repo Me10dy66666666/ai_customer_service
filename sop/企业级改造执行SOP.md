@@ -109,7 +109,7 @@
 
 ### Phase 4：DSH 客服 Agent 可靠性、可观测性与数据一致性
 
-状态：`DONE_LOCAL（DEPLOYMENT_DRILL_PENDING）`
+状态：`DONE_REMOTE（DSH_PERSONAL_REMOTE_PENDING / DEPLOYMENT_DRILL_PENDING）`
 
 范围：
 
@@ -180,7 +180,7 @@
 | Phase 1 | DONE_LOCAL / PUSH_PENDING | `c2c813bc` | Backend 23/23；Frontend build；Pipeline 18/18 + typecheck | GitHub HTTPS 连接被重置；WebSocket Ticket 与大 Chunk 分别在 Phase 2/5 处理 |
 | Phase 2 | DONE_LOCAL / PUSH_PENDING | 根仓库见 `phase-2`；DSH `b864a7756b` | Backend 27/27；DSH customer-service 4/4 + 三包 typecheck/build | GitHub 网络重置；共享多会话 DSH Worker 上线前必须改为 per-agent scoped capability；当前仅允许单客户隔离 Worker 灰度 |
 | Phase 3 | DONE_REMOTE / DEPLOYMENT_MIGRATION_PENDING | `4b463b49` | Data Pipeline 26/26 + typecheck；TS core/server 11/11 + typecheck/build；Python compileall | Java 记忆迁移需在部署环境执行；DSH 共享 Worker 仍需 per-agent capability |
-| Phase 4 | DONE_LOCAL / DEPLOYMENT_DRILL_PENDING | 待提交 | Backend 34/34；DSH 4 files / 8 tests；Flyway V4 与 DSH SSE/metrics 合同通过 | 在目标 MySQL 执行 Flyway 基线、共享 Session 多实例恢复和 OTLP 端到端演练待部署环境 |
+| Phase 4 | DONE_REMOTE / DSH_PERSONAL_REMOTE_PENDING / DEPLOYMENT_DRILL_PENDING | `84406775` | Backend interfaces 20/20 + backend-boot package；DSH focused 4 files / 10 tests + Gateway typecheck（本地独立仓库） | DSH 个人远端尚未配置；在目标 MySQL 执行 Flyway 基线、共享 Session 多实例恢复和 OTLP 端到端演练待部署环境 |
 | Phase 5 | DONE_LOCAL / CI_E2E_TOOLCHAIN_PENDING | 待提交 | Frontend unit 2/2、build、TypeScript contract check；JS chunks <500 KB | ESLint/Vitest/Playwright/Testcontainers/Agent Eval 依赖与灰度回滚门禁待 CI/部署环境 |
 
 ## 7. 回滚规则
