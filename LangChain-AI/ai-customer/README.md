@@ -1,6 +1,6 @@
 # ai-customer
 
-基于 Python、LangChain 和 LangGraph 的 AI 工作流与智能体工程脚手架，适合作为客服、问答、流程编排类项目的起点。
+基于 Python、LangChain 和 LangGraph 的客服工作流。知识检索通过共享的 `data-pipeline` HTTP 契约完成，实际向量存储由 PostgreSQL + pgvector 统一承载。
 
 ## 目录结构
 
@@ -34,6 +34,7 @@ ai-customer/
 - `tools/`：封装可挂载到 Agent 的工具。
 - `llms/`：统一管理模型实例化逻辑，避免业务层直接依赖厂商 SDK。
 - `config/`：集中管理环境变量和运行配置。
+- `core/base/vector_store.py`：data-pipeline 的窄 HTTP 适配器，不在本项目内创建本地向量库。
 - `tests/`：关键工具与工作流的单元测试。
 
 ## 快速开始
@@ -57,6 +58,14 @@ pip install -e .[dev]
 
 ```powershell
 Copy-Item .env.example .env
+```
+
+至少设置 `OPENAI_API_KEY`、`PIPELINE_SERVICE_TOKEN`；`DATA_PIPELINE_URL` 默认指向 `http://localhost:3002`。
+
+知识库同步命令从 MySQL 读取已批准的 `knowledge_documents` 行，并交给 data-pipeline 完成切块、Embedding 和 pgvector 入库：
+
+```powershell
+python -m ai_customer.scripts.chunks
 ```
 
 4. 运行工作流

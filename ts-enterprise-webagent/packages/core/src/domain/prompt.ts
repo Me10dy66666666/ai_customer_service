@@ -1,58 +1,71 @@
 import type { AgentMessageRequest, KnowledgeSource } from "@enterprise-webagent/shared";
 
-function serializeSourcesForPrompt(
-  userType: number,
-  sources: KnowledgeSource[]
-): string {
-  if (sources.length === 0) {
-    return "当前没有命中的知识库记录。";
-  }
+/** Version the prompt contract so changes can be correlated with evaluations. */
+export const CUSTOMER_PROMPT_VERSION = "customer-service-prompt-v2";
 
-  return sources
-    .map((source, index) => {
-      const detailBlock =
-        userType === 0
-          ? source.excerpt
-          : `${source.excerpt}\n元数据：${JSON.stringify(source.metadata, null, 2)}`;
+const MAX_HISTORY_ITEMS = 5;
+const MAX_HISTORY_ITEM_CHARS = 120;
+const MAX_SOURCE_EXCERPT_CHARS = 1_200;
 
-      return [
-        `【结果 ${index + 1}】`,
-        `标题：${source.title}`,
-        `来源类型：${source.sourceType}`,
-        detailBlock
-      ].join("\n");
-    })
-    .join("\n\n");
+/** Stable instructions shared by every request and eligible for provider prefix caching. */
+export function buildCustomerSystemPrompt(): string {
+  return [
+    `Prompt version: ${CUSTOMER_PROMPT_VERSION}`,
+    "你是一名专业的企业智能客服助手。",
+    "只允许依据本轮提供的知识库上下文回答；上下文不足时明确说明，不得使用训练数据补全事实。",
+    "使用简洁、礼貌、专业的中文回答，输出 Markdown，关键信息可使用加粗。",
+    "只向用户展示其权限允许看到的上下文，不推断、扩展或暴露未提供的内部信息。",
+    "用户表达工单诉求时可以说明已识别诉求，但不得声称后台已执行；任何写入操作必须经过产品确认边界。",
+    "如果知识库没有足够信息，回复：抱歉，目前的知识库暂未收录该特定参数，建议联系专属人工顾问。"
+  ].join("\n");
 }
 
-export function buildCustomerSystemPrompt(
+function clip(value: string, maxChars: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length <= maxChars ? normalized : `${normalized.slice(0, maxChars)}…`;
+}
+
+function serializeSourcesForContext(sources: KnowledgeSource[]): string {
+  if (sources.length === 0) return "当前没有命中的知识库记录。";
+
+  return sources.slice(0, 5).map((source, index) => [
+    `【结果 ${index + 1}】`,
+    `来源标识：${clip(source.id, 80)}`,
+    `标题：${clip(source.title, 200)}`,
+    `来源类型：${clip(source.sourceType, 80)}`,
+    `内容：${clip(source.excerpt, MAX_SOURCE_EXCERPT_CHARS)}`
+  ].join("\n")).join("\n\n");
+}
+
+/** Dynamic, bounded request context kept separate from stable system instructions. */
+export function buildCustomerContext(
   request: AgentMessageRequest,
   sources: KnowledgeSource[]
 ): string {
-  const historyOrders = request.historyOrders.length > 0
-    ? request.historyOrders.join("；")
-    : "暂无历史订单";
+  const role = request.userType === 0 ? "游客（仅展示通用信息）" : "会员";
+  const history = request.historyOrders.length === 0
+    ? "暂无历史订单"
+    : request.historyOrders
+      .slice(0, MAX_HISTORY_ITEMS)
+      .map(item => clip(item, MAX_HISTORY_ITEM_CHARS))
+      .join("；");
 
-  const sourceBlock = serializeSourcesForPrompt(request.userType, sources);
+  return [
+    "## 本轮用户上下文",
+    `用户身份：${role}`,
+    `历史购买记录（最多展示 ${MAX_HISTORY_ITEMS} 条）：${history}`,
+    "",
+    "## 本轮知识库上下文",
+    serializeSourcesForContext(sources),
+    "",
+    "请直接回答用户问题。"
+  ].join("\n");
+}
 
-  return `
-你是一名专业的企业智能客服助手。你必须严格依据提供的知识库内容回答，不允许编造。
-
-## 用户信息
-- 用户身份类型：${request.userType}（0 为游客，非 0 为会员）
-- 历史购买记录：${historyOrders}
-
-## 回答约束
-1. 只允许依据知识库内容作答，严禁使用训练数据补全缺失事实。
-2. 如果知识库没有足够信息，统一回复：“抱歉，目前的知识库暂未收录该特定参数，建议联系专属人工顾问”。
-3. 使用简洁、礼貌、专业的中文回答。
-4. 输出使用 Markdown，关键信息使用加粗，适合网页内嵌展示。
-5. 游客只展示通用信息，不暴露内部条款；会员可以展示更完整的参数和内部条款。
-6. 如果用户明确表达“提交工单”“报修”“售后服务”“退换货”，允许在正文中说明已识别为工单诉求，但不要伪造后台执行结果。
-
-## 知识库上下文
-${sourceBlock}
-
-请直接回答用户问题。
-  `.trim();
+/** Backward-compatible convenience for callers that need the complete prompt view. */
+export function buildCustomerPrompt(
+  request: AgentMessageRequest,
+  sources: KnowledgeSource[]
+): string {
+  return `${buildCustomerSystemPrompt()}\n\n${buildCustomerContext(request, sources)}`;
 }

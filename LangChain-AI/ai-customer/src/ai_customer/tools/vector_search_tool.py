@@ -1,66 +1,58 @@
+from __future__ import annotations
+
+import logging
+from functools import lru_cache
+
 from langchain_core.tools import tool
-from ai_customer.core.base.vector_store import VectorStore
-from ai_customer.config.settings import settings
-from typing import Optional, List, Dict
 
-# 全局单例 VectorStore（避免每次查询都重新加载）
-_VECTOR_STORE: Optional[VectorStore] = None
+from ai_customer.config.settings import get_settings
+from ai_customer.core.base.vector_store import KnowledgeBaseClient, VectorStoreError
 
-#获取向量数据库
-def get_vector_store() -> VectorStore:
-    global _VECTOR_STORE
-    if _VECTOR_STORE is None:
-        _VECTOR_STORE = VectorStore(
-            collection_name=settings.vector.collection_name,
-            embedding_model=settings.vector.EMBEDDING_MODEL,
-            persist_path=settings.vector.PERSIST_PATH,
-            distance_metric="cosine"
-        )
-    return _VECTOR_STORE
 
-@tool("query_knowledge", description="根据用户的提问从知识库中查询信息。")
+logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def get_vector_store() -> KnowledgeBaseClient:
+    """Return the process-scoped adapter to the shared data-pipeline service."""
+
+    vector = get_settings().vector
+    return KnowledgeBaseClient(
+        base_url=vector.base_url,
+        service_token=vector.service_token,
+        dataset_id=vector.dataset_id,
+        timeout_ms=vector.timeout_ms,
+        retry_attempts=vector.retry_attempts,
+        retry_delay_ms=vector.retry_delay_ms,
+    )
+
+
+@tool("query_knowledge", description="根据用户的提问从共享知识库中查询信息。")
 def query_knowledge(query: str, top_k: int = 5) -> str:
-    """
-    从向量数据库中检索与查询最相关的知识片段。
-    
-    Args:
-        query: 用户的问题或查询文本。
-        top_k: 返回的匹配结果数量，默认 5。
-    
-    Returns:
-        格式化的检索结果字符串，包含每个块的内容和元数据。
-    """
-    vector_store = get_vector_store()
+    """Retrieve bounded, cited knowledge sources for the customer question."""
 
-    # VectorStore.query() 返回字典 {ids, documents, metadatas, distances}，非 Document 列表
-    result = vector_store.query(query, n_results=top_k)
+    try:
+        sources = get_vector_store().search(query, limit=min(max(top_k, 1), 10))
+    except (VectorStoreError, ValueError) as error:
+        logger.warning("knowledge retrieval failed: %s", error)
+        return "知识库暂时不可用，请稍后再试。"
 
-    documents = result.get("documents") or []
-    metadatas = result.get("metadatas") or []
-
-    if not documents:
+    if not sources:
         return "未找到与您问题相关的信息。"
 
-    # 格式化输出：每个块包含来源和内容
-    formatted_results = []
-    for i, content in enumerate(documents, 1):
-        meta = metadatas[i - 1] if i - 1 < len(metadatas) else {}
-        source = meta.get("table_name", "未知表") if meta else "未知表"
-        row_id = meta.get("row_id", "未知行") if meta else "未知行"
-        formatted_results.append(
-            f"【结果 {i}】来源：{source}（{row_id}）\n{content.strip()}\n"
-        )
+    formatted_results: list[str] = []
+    for index, source in enumerate(sources, 1):
+        metadata = source.get("metadata")
+        metadata_map = metadata if isinstance(metadata, dict) else {}
+        title = str(source.get("title") or metadata_map.get("table_name") or "未知来源")
+        row_id = str(metadata_map.get("row_id") or source.get("id") or "未知记录")
+        excerpt = str(source.get("excerpt") or "").strip()
+        formatted_results.append(f"【结果 {index}】来源：{title}（{row_id}）\n{excerpt}")
 
-    return "\n".join(formatted_results)
-
+    return "\n\n".join(formatted_results)
 
 
-# 获取知识库工具,统一管理工具
 def get_knowledge_base_tools() -> list:
-    """
-    获取知识库工具列表。
-    
-    Returns:
-        包含知识库工具列表的列表。
-    """
+    """Return the knowledge tools exposed to the LangChain agent."""
+
     return [query_knowledge]

@@ -13,7 +13,10 @@ export const ingestRequestSchema = z.object({
   embeddingModel: z.string().trim().max(128).default("configured"),
   knowledgeDomain: z.string().trim().max(128).default("customer-service"),
   allowedRoles: z.array(z.string().trim().min(1).max(64)).max(16).default(["PUBLIC"]),
-  expiresAt: z.string().datetime({ offset: true }).optional()
+  expiresAt: z.string().datetime({ offset: true }).optional(),
+  metadata: z.record(z.string(), z.string())
+    .refine((value) => Object.keys(value).length <= 64, "metadata supports at most 64 keys")
+    .default({})
 });
 
 export const ingestResponseSchema = z.object({

@@ -18,6 +18,8 @@ export interface KnowledgeRetriever {
 export interface ChatModel {
   generate(input: {
     systemPrompt: string;
+    /** Bounded per-request context; kept out of the stable system prefix. */
+    context?: string;
     userMessage: string;
     sources: KnowledgeSource[];
     signal?: AbortSignal;

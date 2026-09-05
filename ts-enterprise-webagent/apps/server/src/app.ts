@@ -13,9 +13,7 @@ import {
   type Logger
 } from "@enterprise-webagent/core";
 
-import { InMemoryKnowledgeBase } from "./adapters/inMemoryKnowledgeBase.js";
-import { ChromadbKnowledgeBase } from "./adapters/chromadbKnowledgeBase.js";
-import { ChromadbKnowledgeBaseManager } from "./services/chromadbKnowledgeBaseManager.js";
+import { DataPipelineKnowledgeBase } from "./adapters/dataPipelineKnowledgeBase.js";
 import {
   MockChatModel,
   OpenAiCompatibleChatModel
@@ -54,19 +52,13 @@ function selectChatModel(config: ServerConfig, logger: Logger): ChatModel {
 }
 
 export async function buildApp(dependencies: AppDependencies): Promise<FastifyInstance> {
-  const fastify = Fastify({ bodyLimit: 64 * 1024, logger: false });
+  const fastify = Fastify({ bodyLimit: 64 * 1024, logger: { level: dependencies.config.log.level } });
   const logger = dependencies.logger ?? consoleLogger;
 
   // 1. 创建 Agent 注册中心
   const registry = new AgentRegistry();
 
   // 2. 从配置构建默认 Agent 列表
-  const sensitiveConfig = {
-    ...dependencies.config,
-    ...dependencies.config.dify,
-    ALLOWED_ORIGINS: dependencies.config.allowedOrigins.join(",")
-  } as Record<string, unknown>;
-
   const agentMetadataList = buildDefaultAgents({
     AGENT_MODEL_MODE: dependencies.config.modelMode,
     OPENAI_API_KEY: dependencies.config.openAiApiKey,
@@ -74,8 +66,11 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     OPENAI_MODEL: dependencies.config.openAiModel,
     EMBEDDING_MODEL: dependencies.config.embedding.model,
     EMBEDDING_DIMENSIONS: dependencies.config.embedding.dimensions,
-    CHROMADB_URL: dependencies.config.chromadb.url,
-    CHROMADB_COLLECTION: dependencies.config.chromadb.collection,
+    DATA_PIPELINE_URL: dependencies.config.dataPipeline.baseUrl,
+    PIPELINE_SERVICE_TOKEN: dependencies.config.dataPipeline.serviceToken,
+    DATA_PIPELINE_TIMEOUT_MS: dependencies.config.dataPipeline.timeoutMs,
+    DATA_PIPELINE_RETRY_ATTEMPTS: dependencies.config.dataPipeline.retryAttempts,
+    DATA_PIPELINE_RETRY_DELAY_MS: dependencies.config.dataPipeline.retryDelayMs,
     DIFY_BASE_URL: dependencies.config.dify.baseUrl,
     DIFY_CHAT_API_KEY: dependencies.config.dify.chatApiKey,
     DIFY_KNOWLEDGE_API_KEY: dependencies.config.dify.knowledgeApiKey,
@@ -93,38 +88,27 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     LOG_LEVEL: dependencies.config.log.level
   });
 
-  // 3. 创建知识库（优先 ChromaDB，降级内存）
-  let knowledgeRetriever = dependencies.knowledgeRetriever;
+  // 3. KnowledgeRetriever 只依赖 data-pipeline 的 HTTP 契约；不在 Agent 进程
+  // 内保留内存/向量数据库实现，避免生产环境静默降级造成数据不一致。
+  const dataPipeline = new DataPipelineKnowledgeBase({
+    baseUrl: dependencies.config.dataPipeline.baseUrl,
+    serviceToken: dependencies.config.dataPipeline.serviceToken,
+    timeoutMs: dependencies.config.dataPipeline.timeoutMs,
+    retryAttempts: dependencies.config.dataPipeline.retryAttempts,
+    retryDelayMs: dependencies.config.dataPipeline.retryDelayMs,
+    embeddingModel: dependencies.config.embedding.model,
+    embeddingDimensions: dependencies.config.embedding.dimensions
+  });
+  const knowledgeRetriever = dependencies.knowledgeRetriever ?? dataPipeline;
   let knowledgeBaseManager: import("@enterprise-webagent/core").KnowledgeBaseManager | null = null;
-
-  if (dependencies.config.chromadb.url !== "http://localhost:8000" || dependencies.config.openAiApiKey) {
-    try {
-      const chromadbKB = new ChromadbKnowledgeBase({
-        chromadbUrl: dependencies.config.chromadb.url,
-        collection: dependencies.config.chromadb.collection,
-        embeddingApiKey: dependencies.config.openAiApiKey,
-        embeddingBaseUrl: dependencies.config.openAiBaseUrl,
-        embeddingModel: dependencies.config.embedding.model,
-        embeddingDimensions: dependencies.config.embedding.dimensions
-      });
-      knowledgeRetriever = chromadbKB;
-      knowledgeBaseManager = new ChromadbKnowledgeBaseManager(chromadbKB, dependencies.config);
-      logger.info("Using ChromaDB knowledge base", { url: dependencies.config.chromadb.url });
-    } catch (error) {
-      logger.warn("ChromaDB init failed, falling back to in-memory knowledge base", {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
+  if (knowledgeRetriever === dataPipeline) knowledgeBaseManager = dataPipeline;
 
   // 4. 注册各 Agent 实例
   for (const meta of agentMetadataList) {
     if (meta.type === "custom") {
       const chatModel = dependencies.chatModel ?? selectChatModel(dependencies.config, logger);
-      const kbRetriever = knowledgeRetriever ?? new InMemoryKnowledgeBase();
-
       const agent = new CustomCustomerAgent(meta, {
-        knowledgeRetriever: kbRetriever,
+        knowledgeRetriever,
         chatModel,
         logger
       });
@@ -163,6 +147,7 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
   fastify.setErrorHandler((error, request, reply) => {
     const err = error as Error;
     logger.error("Unhandled server error", {
+      requestId: request.id,
       path: request.url,
       message: err.message
     });

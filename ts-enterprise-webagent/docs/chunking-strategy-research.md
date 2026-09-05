@@ -1,5 +1,7 @@
 # RAG 系统文档分块策略技术调研
 
+> 本文保留算法选型与历史兼容性分析；运行时的向量存储契约以 PostgreSQL + pgvector 实现为准。
+
 > 撰写日期：2026-08-10
 > 项目背景：本项目（ai_customer_service）当前在 Python 侧采用 LangChain RecursiveCharacterTextSplitter 作为分块策略，向量存储使用 ChromaDB PersistentClient，嵌入模型为 `qwen3.7-text-embedding`（DashScope API）。`ts-enterprise-webagent` 子项目正在将 Python 版迁移为 TypeScript 原生实现。本报告对该策略进行系统评估，并调研所有可替代及增强方案。
 

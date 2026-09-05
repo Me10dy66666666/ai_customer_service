@@ -49,10 +49,11 @@ npm run dev:widget
 
 ## 环境变量
 
-服务端默认支持两种模型模式：
+服务端支持三种模型模式，默认值为 `openai-compatible`：
 
-- `mock`：本地开发默认值，无需外部模型密钥。
+- `mock`：仅用于测试或显式本地开发配置，不作为服务默认值。
 - `openai-compatible`：连接 OpenAI 兼容接口。
+- `dify`：仅在显式配置 Dify 密钥时作为兼容/降级路径。
 
 示例见 `apps/server/.env.example`。
 

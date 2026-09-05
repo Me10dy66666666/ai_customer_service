@@ -11,8 +11,24 @@ const config: PipelineConfig = {
     serviceToken: "test-service-token",
     allowedOrigins: ["http://localhost:5173"]
   },
-  embedding: { baseUrl: "http://unused", apiKey: "", model: "test", dimensions: 2 },
-  chromadb: { url: "http://unused", collection: "test" },
+  postgres: {
+    connectionString: "postgresql://unused",
+    poolMax: 2,
+    idleTimeoutMs: 1000,
+    connectionTimeoutMs: 1000,
+    statementTimeoutMs: 1000,
+    retryAttempts: 1,
+    retryDelayMs: 0
+  },
+  embedding: {
+    baseUrl: "http://unused",
+    apiKey: "",
+    model: "test",
+    dimensions: 2,
+    timeoutMs: 1000,
+    retryAttempts: 1,
+    retryDelayMs: 0
+  },
   chunking: {
     strategy: "pdr",
     chunkSize: 800,

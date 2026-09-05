@@ -4,7 +4,7 @@ from langchain.agents import create_agent
 
 from ai_customer.config.settings import get_settings
 from ai_customer.llms.factory import build_chat_model
-from ai_customer.prompts.system import CUSTOMER_SYSTEM_PROMPT
+from ai_customer.prompts.system import CUSTOMER_SUPPORT_SYSTEM_PROMPT, build_customer_context
 from ai_customer.tools import get_knowledge_base_tools
 
 
@@ -17,7 +17,7 @@ def build_customer_agent():
     return create_agent(
         model=model,
         tools=tools,
-        system_prompt=CUSTOMER_SYSTEM_PROMPT,
+        system_prompt=CUSTOMER_SUPPORT_SYSTEM_PROMPT,
     )
 
 
@@ -25,7 +25,10 @@ def run_customer_agent(user_input: str, his_ords: str, user_type: int, context: 
     """Run the customer agent and return the final assistant message."""
 
     agent = build_customer_agent()
-    response = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
+    runtime_context = build_customer_context(user_type, his_ords, context)
+    response = agent.invoke({
+        "messages": [{"role": "user", "content": f"{runtime_context}\n\n用户问题：{user_input}"}],
+    })
     messages = response.get("messages", [])
     if messages:
         return str(messages[-1].content)

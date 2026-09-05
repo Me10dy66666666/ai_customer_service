@@ -20,6 +20,7 @@ export interface IngestInput {
   knowledgeDomain?: string | undefined;
   allowedRoles?: string[] | undefined;
   expiresAt?: string | undefined;
+  metadata?: Record<string, string> | undefined;
 }
 
 /**
@@ -40,9 +41,10 @@ export class KnowledgeBaseManager {
       documentVersion = 1,
       embeddingModel = "configured",
       knowledgeDomain = "customer-service",
-      allowedRoles = ["PUBLIC"]
+      allowedRoles = ["PUBLIC"],
+      metadata: inputMetadata = {}
     } = input;
-    const metadata = this.deps.chunking.extractMetadata(content);
+    const extractedMetadata = this.deps.chunking.extractMetadata(content);
     const sourceHash = createHash("sha256").update(content, "utf8").digest("hex");
     const documentId = input.documentId
       ?? `doc-${Date.now()}-${this.sanitizeFilename(filename)}-${sourceHash.slice(0, 12)}`;
@@ -50,8 +52,26 @@ export class KnowledgeBaseManager {
     // 父文档检索模式：父块必须落库，子块只负责召回，随后回查父块生成上下文。
     const { parentChunks, childChunks } = this.deps.chunking.splitWithParent(content);
     const allowedRoleMetadata = this.normalizeRoles(allowedRoles);
+    const customMetadata = Object.fromEntries(
+      Object.entries(inputMetadata).filter(([key]) => ![
+        "title",
+        "datasetId",
+        "docId",
+        "documentVersion",
+        "sourceHash",
+        "embeddingModel",
+        "knowledgeDomain",
+        "allowedRoles",
+        "enabled",
+        "expiresAt",
+        "chunkKind",
+        "chunkIndex",
+        "parentId"
+      ].includes(key))
+    );
     const commonMetadata = {
-      ...metadata,
+      ...extractedMetadata,
+      ...customMetadata,
       title: filename,
       datasetId,
       docId: documentId,
@@ -67,6 +87,8 @@ export class KnowledgeBaseManager {
     const parentDocuments: StoredDocument[] = parentChunks.map((chunk) => ({
       id: `${documentId}-parent-${chunk.index}`,
       content: chunk.content,
+      documentId,
+      chunkId: `parent-${chunk.index}`,
       metadata: {
         ...commonMetadata,
         chunkKind: "parent",
@@ -78,6 +100,8 @@ export class KnowledgeBaseManager {
     const childDocuments: StoredDocument[] = childChunks.map((chunk) => ({
       id: `${documentId}-child-${chunk.index}`,
       content: chunk.content,
+      documentId,
+      chunkId: `child-${chunk.index}`,
       metadata: {
         ...commonMetadata,
         sourceType: chunk.sourceType,
@@ -109,7 +133,13 @@ export class KnowledgeBaseManager {
 
     // 先扩大候选集，再在服务端过滤 ACL/版本/过期状态，避免把客户端过滤当成安全边界。
     const candidateLimit = Math.min(Math.max(input.limit * 5, input.limit), 50);
-    const results = await this.deps.vectorStore.search(queryEmbedding, candidateLimit);
+    const results = await this.deps.vectorStore.search(queryEmbedding, candidateLimit, {
+      datasetId: input.datasetId,
+      knowledgeDomain: input.knowledgeDomain,
+      roles: input.roles,
+      chunkKind: "child",
+      excludeExpired: true
+    });
     const visibleResults = results
       .filter((result) => result.metadata.chunkKind !== "parent")
       .filter((result) => !input.datasetId || result.metadata.datasetId === input.datasetId)
@@ -156,6 +186,17 @@ export class KnowledgeBaseManager {
     await this.deps.vectorStore.setEnabled(documentId, enabled);
   }
 
+  public async listDocuments(datasetId: string, page: number, limit: number): Promise<Array<Record<string, unknown>>> {
+    const summaries = await this.deps.vectorStore.listDocuments?.(datasetId, page, limit);
+    return (summaries ?? []).map((summary) => ({
+      id: summary.documentId,
+      name: summary.title,
+      document_count: summary.chunkCount,
+      enabled: summary.enabled,
+      updated_at: summary.updatedAt
+    }));
+  }
+
   /**
    * 重建索引：清空向量库后按给定文档重新入库。
    */
@@ -191,7 +232,7 @@ export class KnowledgeBaseManager {
   private isNotExpired(expiresAt: string | undefined): boolean {
     if (!expiresAt) return true;
     const expiry = Date.parse(expiresAt);
-    return Number.isNaN(expiry) || expiry > Date.now();
+    return !Number.isNaN(expiry) && expiry > Date.now();
   }
 
   private chunkIndex(parentId: string): string {
