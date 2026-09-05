@@ -11,6 +11,12 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:3}
+    validate-on-migrate: true
   data:
     redis:
       host: ${REDIS_HOST:127.0.0.1}
@@ -40,6 +46,7 @@ spring:
         concurrency: 2
         max-concurrency: 4
         prefetch: 10
+        default-requeue-rejected: false
     template:
       retry:
         enabled: true
@@ -58,9 +65,38 @@ mybatis:
 server:
   port: 8081
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  pattern:
+    level: "%5p [traceId=%X{traceId:-},spanId=%X{spanId:-}]"
+
+# 统一外部调用重试边界：仅幂等读/删请求使用；客服消息、工作流和上传等写请求不自动重试。
+external-call:
+  retry:
+    max-attempts: ${EXTERNAL_CALL_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff-ms: ${EXTERNAL_CALL_RETRY_INITIAL_BACKOFF_MS:200}
+    max-backoff-ms: ${EXTERNAL_CALL_RETRY_MAX_BACKOFF_MS:2000}
+
 security:
   jwt:
-    secret: ${JWT_SECRET:dev-only-change-this-jwt-secret-before-production-2026}
+    # No fallback secret: JwtUtils rejects empty/short values during startup.
+    secret: ${JWT_SECRET:}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
@@ -68,27 +104,37 @@ security:
 dify:
   base-url: ${DIFY_BASE_URL:https://api.dify.ai/v1}
   knowledge:
-    key: ${DIFY_KNOWLEDGE_KEY}
-    dataset-id: ${DIFY_DATASET_ID}
+    key: ${DIFY_KNOWLEDGE_KEY:}
+    dataset-id: ${DIFY_DATASET_ID:}
   chat:
-    key: ${DIFY_CHAT_KEY}
+    key: ${DIFY_CHAT_KEY:}
     timeout: 120000
   intervention:
-    api-key: ${DIFY_INTERVENTION_KEY}
+    api-key: ${DIFY_INTERVENTION_KEY:}
     workflow: /workflows/run
+  workflow:
+    connect-timeout-ms: ${DIFY_WORKFLOW_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${DIFY_WORKFLOW_READ_TIMEOUT_MS:30000}
   workorder:
-    api-key: ${DIFY_WORKORDER_KEY}
+    api-key: ${DIFY_WORKORDER_KEY:}
     workflow: /workflows/run
 
-# TS Agent 配置（切换为自研 TypeScript Agent 时使用）
-# 切换方式: 设置环境变量 AGENT_PROVIDER=ts-agent
-ts-agent:
-  base-url: ${TS_AGENT_BASE_URL:http://localhost:3001}
-  api-key: ${TS_AGENT_API_KEY:}
+# DeepSeek Harness 以 headless 方式运行，由项目自有 BFF 暴露窄 HTTP 边界。
+dsh:
+  gateway:
+    base-url: ${DSH_GATEWAY_BASE_URL:http://localhost:3001}
+    service-token: ${DSH_GATEWAY_SERVICE_TOKEN:}
+    model: ${DSH_GATEWAY_MODEL:deepseek-v4-pro}
+    connect-timeout-ms: ${DSH_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${DSH_READ_TIMEOUT_MS:120000}
+    max-concurrent: ${DSH_MAX_CONCURRENT:32}
+    failure-threshold: ${DSH_FAILURE_THRESHOLD:5}
+    circuit-cooldown-ms: ${DSH_CIRCUIT_COOLDOWN_MS:30000}
+    requests-per-second: ${DSH_REQUESTS_PER_SECOND:20}
 
-# Agent 提供者选择: dify（默认）| ts-agent
+# Agent 提供者选择: dsh（生产默认）| dify（显式降级）| gray
 agent:
-  provider: ${AGENT_PROVIDER:dify}
+  provider: ${AGENT_PROVIDER:dsh}
   gray:
     dsh-percentage: ${DSH_GRAY_PERCENTAGE:0}
 
@@ -107,8 +153,8 @@ ocr:
   default-language: zh-CN
   languages: [zh-CN, en-US]
   aliyun:
-    access-key-id: ${OCR_ALIYUN_ACCESS_KEY_ID}
-    access-key-secret: ${OCR_ALIYUN_ACCESS_KEY_SECRET}
+    access-key-id: ${OCR_ALIYUN_ACCESS_KEY_ID:}
+    access-key-secret: ${OCR_ALIYUN_ACCESS_KEY_SECRET:}
     endpoint: ocr-api.cn-hangzhou.aliyuncs.com
     region: cn-hangzhou
     api:

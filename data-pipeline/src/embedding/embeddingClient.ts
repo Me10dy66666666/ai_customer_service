@@ -10,10 +10,25 @@ export interface EmbeddingConfig {
   apiKey: string;
   model: string;
   dimensions: number;
+  timeoutMs?: number | undefined;
+  retryAttempts?: number | undefined;
+  retryDelayMs?: number | undefined;
 }
 
 interface EmbeddingResponse {
   data: Array<{ embedding: number[] }>;
+}
+
+/** Error boundary for an embedding provider failure. */
+export class EmbeddingError extends Error {
+  public constructor(
+    message: string,
+    public readonly statusCode?: number,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
+    this.name = "EmbeddingError";
+  }
 }
 
 /**
@@ -38,25 +53,77 @@ export class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
   }
 
   private async embedBatch(texts: string[]): Promise<number[][]> {
-    const url = `${this.config.baseUrl}/embeddings`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.config.apiKey}`
-      },
-      body: JSON.stringify({
-        model: this.config.model,
-        input: texts,
-        dimensions: this.config.dimensions
-      })
-    });
+    const url = `${this.config.baseUrl.replace(/\/$/, "")}/embeddings`;
+    const attempts = Math.max(1, this.config.retryAttempts ?? 3);
+    const timeoutMs = Math.max(100, this.config.timeoutMs ?? 15_000);
+    let lastFailure: unknown;
 
-    if (!response.ok) {
-      throw new Error(`Embedding API error: HTTP ${response.status}`);
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {})
+          },
+          body: JSON.stringify({
+            model: this.config.model,
+            input: texts,
+            dimensions: this.config.dimensions
+          }),
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          const failure = new EmbeddingError(
+            `Embedding API error: HTTP ${response.status}`,
+            response.status
+          );
+          if (!this.isRetryableStatus(response.status) || attempt === attempts) throw failure;
+          lastFailure = failure;
+        } else {
+          const data = (await response.json()) as EmbeddingResponse;
+          if (!Array.isArray(data.data) || data.data.length !== texts.length) {
+            throw new EmbeddingError("Embedding API returned an unexpected item count");
+          }
+          return data.data.map((item, index) => {
+            if (!Array.isArray(item.embedding)
+                || item.embedding.length !== this.config.dimensions
+                || item.embedding.some((value) => !Number.isFinite(value))) {
+              throw new EmbeddingError(
+                `Embedding API returned an invalid vector at index ${index}`
+              );
+            }
+            return item.embedding;
+          });
+        }
+      } catch (error) {
+        lastFailure = error;
+        if (error instanceof EmbeddingError) {
+          if (error.statusCode === undefined || !this.isRetryableStatus(error.statusCode)) {
+            throw error;
+          }
+        }
+        if (attempt === attempts) {
+          throw error instanceof EmbeddingError
+            ? error
+            : new EmbeddingError("Embedding API request failed", undefined, { cause: error });
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, (this.config.retryDelayMs ?? 250) * attempt);
+      });
     }
 
-    const data = (await response.json()) as EmbeddingResponse;
-    return data.data.map((item) => item.embedding);
+    throw new EmbeddingError("Embedding API request failed", undefined, { cause: lastFailure });
+  }
+
+  private isRetryableStatus(status: number): boolean {
+    return status === 408 || status === 429 || status >= 500;
   }
 }

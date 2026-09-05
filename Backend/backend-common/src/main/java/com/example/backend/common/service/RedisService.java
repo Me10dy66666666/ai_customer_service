@@ -49,6 +49,14 @@ public class RedisService {
     }
 
     /**
+     * Atomically consume a one-time value. Used for confirmation proposals so
+     * two UI requests cannot execute the same Agent proposal.
+     */
+    public Object getAndDelete(final String key) {
+        return redisTemplate.opsForValue().getAndDelete(key);
+    }
+
+    /**
      * 删除缓存
      */
     public boolean delete(final String key) {

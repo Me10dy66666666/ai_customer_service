@@ -14,9 +14,12 @@ export const sensitiveConfigSchema = z.object({
   EMBEDDING_MODEL: z.string().trim().default("text-embedding-ada-002"),
   EMBEDDING_DIMENSIONS: z.coerce.number().int().min(128).max(4096).default(1536),
 
-  // ChromaDB 向量数据库配置
-  CHROMADB_URL: z.string().trim().url().default("http://localhost:8000"),
-  CHROMADB_COLLECTION: z.string().trim().default("customer_service_knowledge"),
+  // 独立 data-pipeline 服务（PostgreSQL + pgvector 由该服务拥有）
+  DATA_PIPELINE_URL: z.string().trim().url().default("http://localhost:3002"),
+  PIPELINE_SERVICE_TOKEN: z.string().trim().default(""),
+  DATA_PIPELINE_TIMEOUT_MS: z.coerce.number().int().min(100).max(120_000).default(15_000),
+  DATA_PIPELINE_RETRY_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(2),
+  DATA_PIPELINE_RETRY_DELAY_MS: z.coerce.number().int().min(0).max(10_000).default(250),
 
   // Dify 平台密钥
   DIFY_BASE_URL: z.string().trim().url().default("https://api.dify.ai/v1"),
@@ -30,8 +33,8 @@ export const sensitiveConfigSchema = z.object({
 
   // 服务配置
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
-  AGENT_MODEL_MODE: z.enum(["mock", "openai-compatible", "dify"]).default("mock"),
-  ALLOWED_ORIGINS: z.string().trim().default("*"),
+  AGENT_MODEL_MODE: z.enum(["mock", "openai-compatible", "dify"]).default("openai-compatible"),
+  ALLOWED_ORIGINS: z.string().trim().default("http://localhost:5173"),
 
   // 知识库配置
   KNOWLEDGE_SEARCH_LIMIT: z.coerce.number().int().min(1).max(50).default(5),

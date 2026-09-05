@@ -35,6 +35,7 @@ public class WorkOrder {
     private Integer excludeFromSla;
     /** 工单评价 1-5星，NULL=未评价 */
     private Integer rating;
+    private Long lockVersion;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

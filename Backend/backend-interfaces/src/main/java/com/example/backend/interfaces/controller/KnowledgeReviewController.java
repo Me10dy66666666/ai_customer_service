@@ -158,6 +158,13 @@ public class KnowledgeReviewController {
         return Result.success(null);
     }
 
+    @PostMapping("/outbox/{outboxId}/replay")
+    @RequireRole({"ADMIN", "KB_ADMIN"})
+    public Result<Object> replayFailedOutbox(@PathVariable Long outboxId) {
+        reviewService.replayFailedOutbox(outboxId);
+        return Result.success(null);
+    }
+
     @DeleteMapping("/{documentId}")
     @RequireRole({"ADMIN", "KB_ADMIN"})
     public Result<Object> deleteDocument(@PathVariable Long documentId) {

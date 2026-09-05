@@ -5,7 +5,7 @@ import {
 } from "@enterprise-webagent/shared";
 
 import type { CustomerAgent, CustomerAgentDependencies } from "../adapters/contracts.js";
-import { buildCustomerSystemPrompt } from "../domain/prompt.js";
+import { buildCustomerContext, buildCustomerSystemPrompt } from "../domain/prompt.js";
 import { detectWorkOrderAction } from "../domain/workOrderIntent.js";
 
 const KNOWLEDGE_LIMIT = 5;
@@ -46,11 +46,13 @@ export class CustomerAgentModule implements CustomerAgent {
       };
     }
 
-    const systemPrompt = buildCustomerSystemPrompt(request, sources);
+    const systemPrompt = buildCustomerSystemPrompt();
+    const context = buildCustomerContext(request, sources);
 
     try {
       const answer = await this.dependencies.chatModel.generate({
         systemPrompt,
+        context,
         userMessage: request.userInput,
         sources
       });

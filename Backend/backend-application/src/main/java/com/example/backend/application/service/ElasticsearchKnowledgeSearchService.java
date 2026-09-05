@@ -8,6 +8,8 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.example.backend.domain.knowledge.model.KnowledgeDocument;
 import com.example.backend.domain.knowledge.service.KnowledgeSearchService;
+import com.example.backend.infrastructure.resilience.ExternalCallRetryPolicy;
+import com.example.backend.infrastructure.resilience.RetryableExternalFailure;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.io.IOException;
 
 @Slf4j
 @Service
@@ -29,9 +32,11 @@ public class ElasticsearchKnowledgeSearchService implements KnowledgeSearchServi
     private static final String ES_INDEX_NAME = "knowledge_documents";
 
     private final ElasticsearchClient esClient;
+    private final ExternalCallRetryPolicy retryPolicy;
 
-    public ElasticsearchKnowledgeSearchService(ElasticsearchClient esClient) {
+    public ElasticsearchKnowledgeSearchService(ElasticsearchClient esClient, ExternalCallRetryPolicy retryPolicy) {
         this.esClient = esClient;
+        this.retryPolicy = retryPolicy;
     }
 
     @Override
@@ -47,12 +52,12 @@ public class ElasticsearchKnowledgeSearchService implements KnowledgeSearchServi
             boolBuilder.filter(TermQuery.of(t -> t.field(ES_FIELD_ENABLED).value(true))._toQuery());
             boolBuilder.filter(TermQuery.of(t -> t.field(ES_FIELD_STATUS_KEYWORD).value(ES_STATUS_PUBLISHED))._toQuery());
 
-            SearchResponse<KnowledgeDocumentEsEntity> response = esClient.search(s -> s
+            SearchResponse<KnowledgeDocumentEsEntity> response = executeIdempotent("vector.search", () -> esClient.search(s -> s
                     .index(ES_INDEX_NAME)
                     .from((page - 1) * size)
                     .size(size)
                     .query(q -> q.bool(boolBuilder.build())),
-                    KnowledgeDocumentEsEntity.class);
+                    KnowledgeDocumentEsEntity.class));
 
             List<KnowledgeDocument> documents = new ArrayList<>();
             for (Hit<KnowledgeDocumentEsEntity> hit : response.hits().hits()) {
@@ -83,11 +88,11 @@ public class ElasticsearchKnowledgeSearchService implements KnowledgeSearchServi
                     .filter(TermQuery.of(t -> t.field(ES_FIELD_STATUS_KEYWORD).value(ES_STATUS_PUBLISHED))._toQuery())
             );
 
-            SearchResponse<KnowledgeDocumentEsEntity> response = esClient.search(s -> s
+            SearchResponse<KnowledgeDocumentEsEntity> response = executeIdempotent("vector.count", () -> esClient.search(s -> s
                     .index(ES_INDEX_NAME)
                     .size(0)
                     .query(q -> q.bool(boolQuery)),
-                    KnowledgeDocumentEsEntity.class);
+                    KnowledgeDocumentEsEntity.class));
 
             var total = response.hits().total();
             return total != null ? total.value() : 0;
@@ -113,12 +118,12 @@ public class ElasticsearchKnowledgeSearchService implements KnowledgeSearchServi
                 boolBuilder.filter(TermQuery.of(t -> t.field("category.keyword").value(category))._toQuery());
             }
 
-            SearchResponse<KnowledgeDocumentEsEntity> response = esClient.search(s -> s
+            SearchResponse<KnowledgeDocumentEsEntity> response = executeIdempotent("vector.search.category", () -> esClient.search(s -> s
                     .index(ES_INDEX_NAME)
                     .from((page - 1) * size)
                     .size(size)
                     .query(q -> q.bool(boolBuilder.build())),
-                    KnowledgeDocumentEsEntity.class);
+                    KnowledgeDocumentEsEntity.class));
 
             List<KnowledgeDocument> documents = new ArrayList<>();
             for (Hit<KnowledgeDocumentEsEntity> hit : response.hits().hits()) {
@@ -150,11 +155,11 @@ public class ElasticsearchKnowledgeSearchService implements KnowledgeSearchServi
                 boolBuilder.filter(TermQuery.of(t -> t.field("category.keyword").value(category))._toQuery());
             }
 
-            SearchResponse<KnowledgeDocumentEsEntity> response = esClient.search(s -> s
+            SearchResponse<KnowledgeDocumentEsEntity> response = executeIdempotent("vector.count.category", () -> esClient.search(s -> s
                     .index(ES_INDEX_NAME)
                     .size(0)
                     .query(q -> q.bool(boolBuilder.build())),
-                    KnowledgeDocumentEsEntity.class);
+                    KnowledgeDocumentEsEntity.class));
 
             var total = response.hits().total();
             return total != null ? total.value() : 0;
@@ -170,11 +175,11 @@ public class ElasticsearchKnowledgeSearchService implements KnowledgeSearchServi
                     .filter(TermQuery.of(t -> t.field(ES_FIELD_ENABLED).value(true))._toQuery())
                     .filter(TermQuery.of(t -> t.field(ES_FIELD_STATUS_KEYWORD).value(ES_STATUS_PUBLISHED))._toQuery())
             );
-            SearchResponse<KnowledgeDocumentEsEntity> response = esClient.search(s -> s
+            SearchResponse<KnowledgeDocumentEsEntity> response = executeIdempotent("vector.count.all", () -> esClient.search(s -> s
                     .index(ES_INDEX_NAME)
                     .size(0)
                     .query(q -> q.bool(filterQuery)),
-                    KnowledgeDocumentEsEntity.class);
+                    KnowledgeDocumentEsEntity.class));
             var total = response.hits().total();
             return total != null ? total.value() : 0;
         } catch (Exception e) {
@@ -196,5 +201,33 @@ public class ElasticsearchKnowledgeSearchService implements KnowledgeSearchServi
         doc.setVersion(entity.getVersion());
         doc.setEnabled(entity.getEnabled());
         return doc;
+    }
+
+    @FunctionalInterface
+    private interface ElasticsearchRead<T> {
+        T execute() throws IOException;
+    }
+
+    /** Execute one read-only vector operation under the shared transient retry boundary. */
+    private <T> T executeIdempotent(String operation, ElasticsearchRead<T> action) {
+        return retryPolicy.executeIdempotent(operation, () -> {
+            try {
+                return action.execute();
+            } catch (IOException e) {
+                throw new ElasticsearchTransientFailure(e);
+            }
+        });
+    }
+
+    private static final class ElasticsearchTransientFailure extends RuntimeException
+            implements RetryableExternalFailure {
+        private ElasticsearchTransientFailure(IOException cause) {
+            super("Elasticsearch vector read failed", cause);
+        }
+
+        @Override
+        public boolean isRetryableExternalFailure() {
+            return true;
+        }
     }
 }

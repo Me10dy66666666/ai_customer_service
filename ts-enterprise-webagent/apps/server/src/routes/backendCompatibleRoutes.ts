@@ -7,7 +7,7 @@ import { agentMessageRequestSchema, agentMessageResponseSchema } from "@enterpri
  * 注册 Backend 对齐路由
  *
  * 提供与 Backend AiChatPort / KnowledgeBasePort 接口完全对标的一组 HTTP API，
- * 使 Backend 可以通过 TsAgentAdapter 以相同接口调用 TS Agent 服务。
+ * 使 Backend 可以通过自己的 HTTP 适配器以相同接口调用 Agent 服务。
  */
 export function registerBackendCompatibleRoutes(
   fastify: FastifyInstance,

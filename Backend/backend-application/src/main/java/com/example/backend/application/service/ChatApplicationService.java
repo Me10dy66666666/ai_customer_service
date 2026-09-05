@@ -11,8 +11,6 @@ import com.example.backend.infrastructure.persistence.mapper.ChatMessageMapper;
 import com.example.backend.domain.order.model.HistoricalOrder;
 import com.example.backend.domain.order.repository.HistoricalOrderRepository;
 import com.example.backend.domain.shared.event.DomainEventPublisher;
-import com.example.backend.domain.workorder.model.WorkOrder;
-import com.example.backend.domain.workorder.repository.WorkOrderRepository;
 import com.example.backend.domain.shared.messaging.MessageBusPort;
 import com.example.backend.infrastructure.messaging.RedisStreamAdapter;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -36,7 +34,6 @@ import java.util.regex.Pattern;
 public class ChatApplicationService {
     private final ConsultationLogRepository consultationLogRepository;
     private final HistoricalOrderRepository orderRepository;
-    private final WorkOrderRepository workOrderRepository;
     private final AiChatPort aiChatPort;
     private final DomainEventPublisher eventPublisher;
     private final SessionStatePort sessionStatePort;
@@ -48,7 +45,6 @@ public class ChatApplicationService {
 
     public ChatApplicationService(ConsultationLogRepository consultationLogRepository,
                                    HistoricalOrderRepository orderRepository,
-                                   WorkOrderRepository workOrderRepository,
                                    AiChatPort aiChatPort,
                                    DomainEventPublisher eventPublisher,
                                    SessionStatePort sessionStatePort,
@@ -56,7 +52,6 @@ public class ChatApplicationService {
                                    ObjectMapper objectMapper) {
         this.consultationLogRepository = consultationLogRepository;
         this.orderRepository = orderRepository;
-        this.workOrderRepository = workOrderRepository;
         this.aiChatPort = aiChatPort;
         this.eventPublisher = eventPublisher;
         this.sessionStatePort = sessionStatePort;
@@ -127,7 +122,9 @@ public class ChatApplicationService {
             aiResponse = "Error: " + errorMessageRef[0];
         }
 
-        String intent = processJsonActions(aiResponse, userId, content);
+        // Model output is an observation only. Any business mutation must go
+        // through an authenticated, user-confirmed application command.
+        String intent = extractIntent(aiResponse);
 
         ConsultationLog log = ConsultationLog.create(sessionId, userId, content, "WEB");
         log.setAiResponse(aiResponse);
@@ -191,7 +188,13 @@ public class ChatApplicationService {
             List<HistoricalOrder> orders = orderRepository.findByUserIdOrderByCreateTimeDesc(userId);
             if (!orders.isEmpty()) {
                 try {
-                    inputs.put("history_orders", objectMapper.writeValueAsString(orders));
+                    inputs.put("history_orders", objectMapper.writeValueAsString(
+                            orders.stream().limit(5).map(order -> Map.of(
+                                    "orderNo", truncate(order.getOrderNo(), 80),
+                                    "productName", truncate(order.getProductName(), 120),
+                                    "status", truncate(order.getOrderStatus(), 40),
+                                    "totalAmount", order.safeTotalAmount()))
+                                    .toList()));
                 } catch (Exception e) {
                     log.error("Failed to serialize history orders", e);
                 }
@@ -200,33 +203,23 @@ public class ChatApplicationService {
         return inputs;
     }
 
-    private String processJsonActions(String aiResponse, Long userId, String originalContent) {
+    /** Extract a model-reported intent without executing any business command. */
+    private String extractIntent(String aiResponse) {
         String jsonBlock = extractJsonBlock(aiResponse);
         if (jsonBlock == null) return null;
         try {
             JsonNode rootNode = objectMapper.readTree(jsonBlock);
             if (!rootNode.has("action")) return null;
-
-            String action = rootNode.get("action").asText();
-            JsonNode dataNode = rootNode.path("data");
-
-            if ("create_work_order".equals(action) && userId != null) {
-                String type = dataNode.has("type") ? dataNode.get("type").asText() : "after_sales";
-                WorkOrder wo = WorkOrder.create(userId,
-                        dataNode.has("title") ? dataNode.get("title").asText() : "User Work Order",
-                        dataNode.has("description") ? dataNode.get("description").asText() : originalContent,
-                        type, "medium");
-                WorkOrder created = workOrderRepository.save(wo);
-                eventPublisher.publish(new com.example.backend.domain.workorder.event.WorkOrderCreatedEvent(
-                        created.getId(), userId, type, "medium"));
-                return "CREATE_WORK_ORDER";
-            }
-
-            return action;
+            return rootNode.get("action").asText();
         } catch (Exception e) {
             log.warn("JSON action parsing warning: {}", e.getMessage());
             return null;
         }
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null) return "";
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
     private String extractJsonBlock(String text) {

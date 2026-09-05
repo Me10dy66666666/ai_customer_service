@@ -1,12 +1,15 @@
 package com.example.backend.infrastructure.dify;
 
+import com.example.backend.infrastructure.resilience.ExternalCallRetryPolicy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import jakarta.annotation.PostConstruct;
 
 import java.util.Map;
 
@@ -16,12 +19,24 @@ public class SummaryClient {
 
     @Value("${dify.intervention.api-key}") private String apiKey;
     @Value("${dify.base-url}") private String baseUrl;
+    @Value("${dify.workflow.connect-timeout-ms:3000}") private int connectTimeoutMs;
+    @Value("${dify.workflow.read-timeout-ms:30000}") private int readTimeoutMs;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final ExternalCallRetryPolicy retryPolicy;
 
-    public SummaryClient(ObjectMapper objectMapper) {
+    public SummaryClient(ObjectMapper objectMapper, ExternalCallRetryPolicy retryPolicy) {
         this.objectMapper = objectMapper;
+        this.retryPolicy = retryPolicy;
+    }
+
+    @PostConstruct
+    void init() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(connectTimeoutMs);
+        factory.setReadTimeout(readTimeoutMs);
+        this.restTemplate = new RestTemplate(factory);
     }
 
     public SummaryResult callTransferWorkflow(Map<String, Object> inputs, String workflowEndpoint) {
@@ -54,7 +69,8 @@ public class SummaryClient {
 
         try {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            ResponseEntity<String> response = retryPolicy.executeNonIdempotent(
+                    "dify.workflow", () -> restTemplate.postForEntity(url, request, String.class));
             if (response.getBody() == null) {
                 log.warn("Dify workflow returned empty body for {}", endpoint);
                 return null;

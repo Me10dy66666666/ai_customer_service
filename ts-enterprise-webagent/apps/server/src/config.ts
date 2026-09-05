@@ -19,9 +19,12 @@ export interface ServerConfig {
     model: string;
     dimensions: number;
   };
-  chromadb: {
-    url: string;
-    collection: string;
+  dataPipeline: {
+    baseUrl: string;
+    serviceToken: string;
+    timeoutMs: number;
+    retryAttempts: number;
+    retryDelayMs: number;
   };
   // 扩展配置
   dify: {
@@ -65,9 +68,12 @@ export function loadServerConfig(source: NodeJS.ProcessEnv = process.env): Serve
       model: sensitive.EMBEDDING_MODEL,
       dimensions: sensitive.EMBEDDING_DIMENSIONS
     },
-    chromadb: {
-      url: sensitive.CHROMADB_URL,
-      collection: sensitive.CHROMADB_COLLECTION
+    dataPipeline: {
+      baseUrl: sensitive.DATA_PIPELINE_URL,
+      serviceToken: sensitive.PIPELINE_SERVICE_TOKEN,
+      timeoutMs: sensitive.DATA_PIPELINE_TIMEOUT_MS,
+      retryAttempts: sensitive.DATA_PIPELINE_RETRY_ATTEMPTS,
+      retryDelayMs: sensitive.DATA_PIPELINE_RETRY_DELAY_MS
     },
     dify: {
       baseUrl: sensitive.DIFY_BASE_URL,

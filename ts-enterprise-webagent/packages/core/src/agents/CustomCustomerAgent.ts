@@ -10,7 +10,7 @@ import {
 
 import type { ICustomAgent } from "./IAgent.js";
 import type { CustomerAgentDependencies } from "../adapters/contracts.js";
-import { buildCustomerSystemPrompt } from "../domain/prompt.js";
+import { buildCustomerContext, buildCustomerSystemPrompt } from "../domain/prompt.js";
 import { detectWorkOrderAction } from "../domain/workOrderIntent.js";
 import { SentimentAnalysisService } from "../services/sentimentAnalysis.js";
 import { CustomerAgentError } from "../domain/errors.js";
@@ -179,11 +179,13 @@ export class CustomCustomerAgent implements ICustomAgent {
     }
 
     // 构建 Prompt 并调用大模型
-    const systemPrompt = buildCustomerSystemPrompt(request, sources);
+    const systemPrompt = buildCustomerSystemPrompt();
+    const context = buildCustomerContext(request, sources);
 
     try {
       const generateInput: Parameters<typeof this.dependencies.chatModel.generate>[0] = {
         systemPrompt,
+        context,
         userMessage: request.userInput,
         sources
       };

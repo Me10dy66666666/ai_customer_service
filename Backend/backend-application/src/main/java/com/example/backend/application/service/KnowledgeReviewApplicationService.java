@@ -400,6 +400,14 @@ public class KnowledgeReviewApplicationService {
     }
 
     @Transactional
+    public void replayFailedOutbox(Long outboxId) {
+        boolean replayed = outboxRepository.replayFailed(outboxId, LocalDateTime.now());
+        if (!replayed) {
+            throw new BusinessException(409, "Outbox 事件不存在或当前不是 FAILED 状态");
+        }
+    }
+
+    @Transactional
     @CacheEvict(value = "knowledgeBase", allEntries = true)
     public void deleteDocument(Long documentId) {
         KnowledgeDocument document = getDocumentDetail(documentId);

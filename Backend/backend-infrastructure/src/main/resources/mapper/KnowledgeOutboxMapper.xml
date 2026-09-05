@@ -4,6 +4,7 @@
 
     <resultMap id="BaseResultMap" type="com.example.backend.infrastructure.persistence.entity.KnowledgeOutboxEntity">
         <id column="id" property="id"/>
+        <result column="event_id" property="eventId"/>
         <result column="document_id" property="documentId"/>
         <result column="event_type" property="eventType"/>
         <result column="payload" property="payload"/>
@@ -13,18 +14,21 @@
         <result column="last_error" property="lastError"/>
         <result column="created_at" property="createdAt"/>
         <result column="next_retry_at" property="nextRetryAt"/>
+        <result column="locked_at" property="lockedAt"/>
+        <result column="completed_at" property="completedAt"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, document_id, event_type, payload, status, retry_count,
-        max_retry, last_error, created_at, next_retry_at
+        id, event_id, document_id, event_type, payload, status, retry_count,
+        max_retry, last_error, created_at, next_retry_at, locked_at, completed_at
     </sql>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO knowledge_outbox (document_id, event_type, payload, status,
+        INSERT INTO knowledge_outbox (event_id, document_id, event_type, payload, status,
             retry_count, max_retry, last_error, created_at, next_retry_at)
-        VALUES (#{documentId}, #{eventType}, #{payload}, #{status},
+        VALUES (#{eventId}, #{documentId}, #{eventType}, #{payload}, #{status},
             #{retryCount}, #{maxRetry}, #{lastError}, NOW(), #{nextRetryAt})
+        ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
     </insert>
 
     <select id="selectById" resultMap="BaseResultMap">
@@ -42,25 +46,34 @@
     </select>
 
     <update id="updateToProcessing">
-        UPDATE knowledge_outbox SET status = 'PROCESSING'
+        UPDATE knowledge_outbox SET status = 'PROCESSING', locked_at = NOW()
         WHERE id = #{id} AND status = 'PENDING'
     </update>
 
     <update id="markCompleted">
-        UPDATE knowledge_outbox SET status = 'COMPLETED' WHERE id = #{id}
+        UPDATE knowledge_outbox
+        SET status = 'COMPLETED', completed_at = NOW(), locked_at = NULL
+        WHERE id = #{id} AND status = 'PROCESSING'
     </update>
 
     <update id="scheduleRetry">
         UPDATE knowledge_outbox
         SET status = 'PENDING', retry_count = retry_count + 1,
-            next_retry_at = #{nextRetryAt}, last_error = #{lastError}
+            next_retry_at = #{nextRetryAt}, last_error = #{lastError}, locked_at = NULL
         WHERE id = #{id}
     </update>
 
     <update id="markFailed">
         UPDATE knowledge_outbox
-        SET status = 'FAILED', last_error = #{lastError}
+        SET status = 'FAILED', last_error = #{lastError}, locked_at = NULL
         WHERE id = #{id}
+    </update>
+
+    <update id="replayFailed">
+        UPDATE knowledge_outbox
+        SET status = 'PENDING', retry_count = 0, next_retry_at = #{nextRetryAt},
+            last_error = NULL, locked_at = NULL, completed_at = NULL
+        WHERE id = #{id} AND status = 'FAILED'
     </update>
 
     <delete id="deleteByDocumentId">

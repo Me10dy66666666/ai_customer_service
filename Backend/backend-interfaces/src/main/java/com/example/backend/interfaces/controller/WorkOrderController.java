@@ -83,7 +83,7 @@ public class WorkOrderController {
 
         String effectiveSessionId = resolvedSessionId;
         if (effectiveSessionId != null && !effectiveSessionId.isEmpty()) {
-            chatWebSocketHandler.sendToUser(effectiveSessionId, Map.of(
+            Map<String, Object> createdPush = Map.of(
                     "type", "workorder_created",
                     KEY_WORK_ORDER_ID, saved.getId(),
                     "title", saved.getTitle(),
@@ -91,7 +91,9 @@ public class WorkOrderController {
                     "woType", saved.getType(),
                     "status", saved.getStatus(),
                     "createTime", saved.getCreateTime() != null ? saved.getCreateTime().toString() : ""
-            ));
+            );
+            chatWebSocketHandler.sendToUser(effectiveSessionId, createdPush);
+            chatWebSocketHandler.broadcastToAgents(createdPush);
         }
 
         chatSummaryService.summarizeWorkorder(
@@ -228,6 +230,7 @@ public class WorkOrderController {
         replyPush.put("result", wo.getResult());
         replyPush.put(KEY_SESSION_ID, message.getSessionId());
         chatWebSocketHandler.sendToUser(message.getSessionId(), replyPush);
+        chatWebSocketHandler.broadcastToAgents(replyPush);
 
         Map<String, Object> chatPush = new LinkedHashMap<>();
         chatPush.put("type", "agent_msg");

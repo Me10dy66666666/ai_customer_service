@@ -1,4 +1,23 @@
 services:
+  vector-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai-customer-service-vector-postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB: ${VECTOR_POSTGRES_DB:-ai_customer_service_vectors}
+      POSTGRES_USER: ${VECTOR_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${VECTOR_POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - vector-postgres-data:/var/lib/postgresql/data
+      - ../data-pipeline/sql/migrations/V1__knowledge_chunks.sql:/docker-entrypoint-initdb.d/V1__knowledge_chunks.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   libreoffice:
     image: lscr.io/linuxserver/libreoffice:latest
     container_name: ai-customer-service-libreoffice
@@ -53,6 +72,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  vector-postgres-data:
   redis-data:
   rabbitmq-data:
   es-data:

@@ -1,242 +1,166 @@
-import logging
-import os
-from typing import List, Dict, Optional, Any, Union
-import chromadb
-from chromadb.utils import embedding_functions
+from __future__ import annotations
 
-# 配置日志
-logging.basicConfig(level=logging.INFO)
+import json
+import logging
+import time
+from collections.abc import Mapping, Sequence
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
+
+
 logger = logging.getLogger(__name__)
 
-class VectorStore:
-    """
-    生产级 ChromaDB 向量存储封装类。
-    支持自定义嵌入模型、批量添加、查询过滤、异常自动恢复等。
+
+class VectorStoreError(RuntimeError):
+    """Raised when the shared data-pipeline/vector boundary cannot be completed."""
+
+
+class KnowledgeBaseClient:
+    """Small HTTP adapter for the canonical PostgreSQL + pgvector service.
+
+    The Python workflow never opens a local vector database or loads an embedding
+    model. Chunking, embedding, filtering, and pgvector retrieval remain owned by
+    ``data-pipeline`` so all application stacks share one storage contract.
     """
 
     def __init__(
         self,
-        collection_name: str ,
-        persist_directory: str ,
-        embedding_model: str ,
-        distance_metric: str = "cosine",
-        **kwargs
-    ):
-        """
-        初始化向量存储客户端与集合。
+        base_url: str,
+        service_token: str,
+        dataset_id: str = "default",
+        timeout_ms: int = 5_000,
+        retry_attempts: int = 2,
+        retry_delay_ms: int = 200,
+    ) -> None:
+        normalized_url = base_url.strip().rstrip("/")
+        if not normalized_url.startswith(("http://", "https://")):
+            raise ValueError("data-pipeline URL must use http or https")
+        if not dataset_id.strip():
+            raise ValueError("vector dataset id must not be empty")
+        if timeout_ms <= 0 or retry_attempts < 0 or retry_delay_ms < 0:
+            raise ValueError("vector timeout/retry settings must be non-negative")
+        self.base_url = normalized_url
+        self.service_token = service_token
+        self.dataset_id = dataset_id.strip()
+        self.timeout_seconds = timeout_ms / 1_000
+        self.retry_attempts = retry_attempts
+        self.retry_delay_seconds = retry_delay_ms / 1_000
 
-        Args:
-            collection_name: 集合名称（类似表名）
-            persist_directory: 本地持久化目录
-            embedding_model: 嵌入模型名称（支持 sentence-transformers 或 OpenAI 等）
-            distance_metric: 距离度量方式，支持 "cosine", "l2", "ip"
-            **kwargs: 传递给 chromadb.PersistentClient 的其他参数
-        """
-        self.collection_name = collection_name
-        self.persist_directory = persist_directory
-
-        # 1. 创建嵌入函数
-        try:
-            if embedding_model.startswith("qwen"):
-                # Qwen 模型通过 DashScope OpenAI 兼容接口调用
-                # 需要 DASHSCOPE_API_KEY 环境变量
-                api_key = os.getenv("DASHSCOPE_API_KEY", "")
-                self.embedding_fn = embedding_functions.OpenAIEmbeddingFunction(
-                    api_key=api_key,
-                    api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
-                    model_name=embedding_model,
-                )
-            else:
-                # 本地 sentence-transformers 模型
-                self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-                    model_name=embedding_model
-                )
-            logger.info(f"加载嵌入模型成功: {embedding_model}")
-        except Exception as e:
-            logger.error(f"加载嵌入模型失败: {e}")
-            raise
-
-        # 2. 创建持久化客户端
-        try:
-            self.client = chromadb.PersistentClient(
-                path=persist_directory,
-                **kwargs
-            )
-            logger.info(f"连接持久化目录成功: {persist_directory}")
-        except Exception as e:
-            logger.error(f"连接 ChromaDB 失败: {e}")
-            raise
-
-        # 3. 获取或创建集合，指定距离度量
-        try:
-            self.collection = self.client.get_or_create_collection(
-                name=collection_name,
-                embedding_function=self.embedding_fn,
-                metadata={"hnsw:space": distance_metric}
-            )
-            logger.info(f"集合 '{collection_name}' 就绪，距离度量: {distance_metric}")
-        except Exception as e:
-            logger.error(f"获取/创建集合失败: {e}")
-            raise
-
-    def add_documents(
+    def ingest_document(
         self,
-        ids: List[str],
-        documents: List[str],
-        metadatas: Optional[List[Dict]] = None,
-        batch_size: int = 1000,
-        show_progress: bool = True
+        document_id: str,
+        filename: str,
+        content: str,
+        metadata: Mapping[str, Any] | None = None,
     ) -> int:
-        """
-        批量添加文档到向量库（自动分块以避免内存溢出）。
+        """Ingest one logical document; data-pipeline owns chunking and embeddings."""
 
-        Args:
-            ids: 文档唯一 ID 列表
-            documents: 文档文本列表
-            metadatas: 元数据字典列表（可选）
-            batch_size: 每批次添加的文档数量
-            show_progress: 是否显示进度条（需安装 tqdm）
+        if not document_id.strip() or not filename.strip() or not content.strip():
+            raise ValueError("document_id, filename, and content must not be empty")
+        values = {str(key): str(value) for key, value in (metadata or {}).items() if value is not None}
+        roles = [role.strip() for role in values.get("allowedRoles", "PUBLIC").split(",") if role.strip()]
+        payload: dict[str, Any] = {
+            "filename": filename.strip()[:255],
+            "content": content,
+            "datasetId": self.dataset_id,
+            "documentId": document_id.strip(),
+            "knowledgeDomain": values.get("knowledgeDomain", "customer-service"),
+            "allowedRoles": roles or ["PUBLIC"],
+            "metadata": values,
+        }
+        expires_at = values.get("expiresAt")
+        if expires_at:
+            payload["expiresAt"] = expires_at
+        response = self._request("/ingest", payload)
+        chunk_count = response.get("chunkCount")
+        if not isinstance(chunk_count, int) or chunk_count < 0:
+            raise VectorStoreError("data-pipeline returned an invalid chunk count")
+        return chunk_count
 
-        Returns:
-            成功添加的文档数量
-        """
+    def ingest_documents(
+        self,
+        ids: Sequence[str],
+        documents: Sequence[str],
+        metadatas: Sequence[Mapping[str, Any]] | None = None,
+    ) -> int:
+        """Ingest a sequence and return the number of successfully submitted documents."""
+
         if len(ids) != len(documents):
-            raise ValueError("ids 和 documents 长度必须一致")
-        if metadatas and len(metadatas) != len(ids):
-            raise ValueError("metadatas 长度必须与 ids 一致")
+            raise ValueError("ids and documents must have equal lengths")
+        if metadatas is not None and len(metadatas) != len(ids):
+            raise ValueError("metadatas and ids must have equal lengths")
+        submitted = 0
+        for index, (document_id, content) in enumerate(zip(ids, documents, strict=True)):
+            metadata = metadatas[index] if metadatas is not None else None
+            self.ingest_document(document_id, document_id, content, metadata)
+            submitted += 1
+        return submitted
 
-        total = len(ids)
-        added = 0
-
-        # 可选进度条
-        iterator = range(0, total, batch_size)
-        if show_progress:
-            try:
-                from tqdm import tqdm
-                iterator = tqdm(iterator, desc="添加文档", unit="batch")
-            except ImportError:
-                logger.warning("未安装 tqdm，进度条不可用")
-
-        for i in iterator:
-            end = min(i + batch_size, total)
-            batch_ids = ids[i:end]
-            batch_docs = documents[i:end]
-            batch_metas = metadatas[i:end] if metadatas else None
-
-            try:
-                self.collection.add(
-                    ids=batch_ids,
-                    documents=batch_docs,
-                    metadatas=batch_metas
-                )
-                added += len(batch_ids)
-            except Exception as e:
-                logger.error(f"批次添加失败 (索引 {i}-{end}): {e}")
-                # 生产环境可选择性重试或跳过，此处继续执行
-                continue
-
-        logger.info(f"成功添加 {added}/{total} 条文档")
-        return added
-
-    def query(
+    def search(
         self,
         query_text: str,
-        n_results: int = 5,
-        where: Optional[Dict] = None,
-        where_document: Optional[Dict] = None,
-        include: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
-        """
-        执行语义查询，返回最相似的文档。
+        limit: int = 5,
+        where: Mapping[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return canonical knowledge sources from server-side filtered retrieval."""
 
-        Args:
-            query_text: 查询文本
-            n_results: 返回结果数量
-            where: 元数据过滤条件，例如 {"source": "wiki"}
-            where_document: 文档内容过滤条件，例如 {"$contains": "Python"}
-            include: 指定返回字段，默认只返回 documents, metadatas, distances
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        filters = dict(where or {})
+        payload: dict[str, Any] = {
+            "query": query_text,
+            "limit": min(limit, 50),
+            "datasetId": str(filters.get("datasetId", self.dataset_id)),
+        }
+        for key in ("knowledgeDomain", "roles"):
+            if key in filters and filters[key] is not None:
+                payload[key] = filters[key]
+        response = self._request("/search", payload)
+        sources = response.get("sources", [])
+        if not isinstance(sources, list):
+            raise VectorStoreError("data-pipeline returned an invalid source list")
+        return [source for source in sources if isinstance(source, dict)]
 
-        Returns:
-            查询结果字典，包含 ids, distances, documents, metadatas 等
-        """
-        if not query_text or not isinstance(query_text, str):
-            raise ValueError("query_text 必须是非空字符串")
+    def delete_documents(self, ids: Sequence[str]) -> int:
+        """Delete logical documents through the data-pipeline lifecycle endpoint."""
 
-        try:
-            result = self.collection.query(
-                query_texts=[query_text],
-                n_results=n_results,
-                where=where,
-                where_document=where_document,
-                include=include or ["documents", "metadatas", "distances"]
-            )
-            # 将结果中的单元素列表扁平化（简化调用方取值）
-            return {
-                k: v[0] if isinstance(v, list) and len(v) == 1 and k != "ids" else v
-                for k, v in result.items()
-            }
-        except Exception as e:
-            logger.error(f"查询失败: {e}")
-            raise
+        deleted = 0
+        for document_id in ids:
+            if not str(document_id).strip():
+                continue
+            self._request(f"/documents/{quote(str(document_id), safe='')}", None, method="DELETE")
+            deleted += 1
+        return deleted
 
-    def delete_documents(self, ids: List[str]) -> int:
-        """
-        根据 ID 删除文档。
+    def _request(self, path: str, payload: Mapping[str, Any] | None, method: str = "POST") -> dict[str, Any]:
+        body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        headers = {"Accept": "application/json"}
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+        if self.service_token:
+            headers["Authorization"] = f"Bearer {self.service_token}"
 
-        Args:
-            ids: 要删除的文档 ID 列表
+        for attempt in range(self.retry_attempts + 1):
+            request = Request(f"{self.base_url}{path}", data=body, headers=headers, method=method)
+            try:
+                with urlopen(request, timeout=self.timeout_seconds) as response:
+                    raw = response.read()
+                decoded = json.loads(raw.decode("utf-8"))
+                if not isinstance(decoded, dict):
+                    raise VectorStoreError("data-pipeline returned a non-object response")
+                return decoded
+            except HTTPError as error:
+                retryable = error.code in {408, 429} or error.code >= 500
+                if not retryable or attempt >= self.retry_attempts:
+                    raise VectorStoreError(f"data-pipeline request failed: HTTP {error.code}") from error
+            except (URLError, TimeoutError, OSError) as error:
+                if attempt >= self.retry_attempts:
+                    raise VectorStoreError("data-pipeline request failed") from error
+            if self.retry_delay_seconds > 0:
+                time.sleep(self.retry_delay_seconds * (attempt + 1))
 
-        Returns:
-            成功删除的数量
-        """
-        if not ids:
-            return 0
-        try:
-            self.collection.delete(ids=ids)
-            logger.info(f"成功删除 {len(ids)} 条文档")
-            return len(ids)
-        except Exception as e:
-            logger.error(f"删除失败: {e}")
-            raise
-
-    def get_document(self, doc_id: str) -> Optional[Dict]:
-        """
-        根据 ID 获取单条文档详情。
-
-        Args:
-            doc_id: 文档 ID
-
-        Returns:
-            包含文档内容、元数据等的字典，若不存在返回 None
-        """
-        try:
-            result = self.collection.get(ids=[doc_id])
-            if result and result['ids']:
-                return {
-                    'id': result['ids'][0],
-                    'document': result['documents'][0] if result['documents'] else None,
-                    'metadata': result['metadatas'][0] if result['metadatas'] else None
-                }
-        except Exception as e:
-            logger.error(f"获取文档失败: {e}")
-        return None
-
-    def count(self) -> int:
-        """返回集合中的文档总数"""
-        return self.collection.count()
-
-    def list_collections(self) -> List[str]:
-        """列出当前客户端中的所有集合名称"""
-        return [c.name for c in self.client.list_collections()]
-
-    def delete_collection(self) -> None:
-        """删除当前集合（谨慎操作）"""
-        try:
-            self.client.delete_collection(self.collection_name)
-            logger.warning(f"集合 '{self.collection_name}' 已删除")
-        except Exception as e:
-            logger.error(f"删除集合失败: {e}")
-            raise
-
-    def __repr__(self) -> str:
-        return f"<VectorStore(collection='{self.collection_name}', count={self.count()})>"
+        raise VectorStoreError("data-pipeline request exhausted retries")

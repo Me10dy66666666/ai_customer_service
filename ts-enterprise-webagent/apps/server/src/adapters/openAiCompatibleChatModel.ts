@@ -4,6 +4,7 @@ import type { KnowledgeSource } from "@enterprise-webagent/shared";
 export class MockChatModel implements ChatModel {
   public async generate(input: {
     systemPrompt: string;
+    context?: string;
     userMessage: string;
     sources: KnowledgeSource[];
     signal?: AbortSignal;
@@ -38,6 +39,7 @@ export class OpenAiCompatibleChatModel implements ChatModel {
 
   public async generate(input: {
     systemPrompt: string;
+    context?: string;
     userMessage: string;
     sources: KnowledgeSource[];
     signal?: AbortSignal;
@@ -54,7 +56,12 @@ export class OpenAiCompatibleChatModel implements ChatModel {
         temperature: 0.2,
         messages: [
           { role: "system", content: input.systemPrompt },
-          { role: "user", content: input.userMessage }
+          {
+            role: "user",
+            content: input.context
+              ? `${input.context}\n\n用户问题：${input.userMessage}`
+              : input.userMessage
+          }
         ]
       })
     });

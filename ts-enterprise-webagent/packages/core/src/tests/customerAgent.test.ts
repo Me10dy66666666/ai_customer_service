@@ -75,7 +75,7 @@ describe("CustomCustomerAgent", () => {
     let capturedPrompt = "";
     const model: ChatModel = {
       generate: async (input) => {
-        capturedPrompt = input.systemPrompt;
+        capturedPrompt = `${input.systemPrompt}\n${input.context ?? ""}`;
         return "会员专属回复";
       },
     };
@@ -100,7 +100,7 @@ describe("CustomCustomerAgent", () => {
     let capturedPrompt = "";
     const model: ChatModel = {
       generate: async (input) => {
-        capturedPrompt = input.systemPrompt;
+        capturedPrompt = `${input.systemPrompt}\n${input.context ?? ""}`;
         return "游客回复";
       },
     };
@@ -117,7 +117,7 @@ describe("CustomCustomerAgent", () => {
       historyOrders: [],
     });
 
-    expect(capturedPrompt).toContain("0 为游客");
+    expect(capturedPrompt).toContain("游客（仅展示通用信息）");
   });
 
   it("should extract work order action from user input keywords", async () => {

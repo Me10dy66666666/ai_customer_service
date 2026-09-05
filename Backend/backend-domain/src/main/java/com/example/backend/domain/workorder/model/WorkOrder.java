@@ -33,6 +33,7 @@ public class WorkOrder extends BaseAggregateRoot {
     private LocalDateTime respondedAt;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    private Long lockVersion;
 
     private boolean slaPaused;
     private Integer effectiveResponseSeconds;

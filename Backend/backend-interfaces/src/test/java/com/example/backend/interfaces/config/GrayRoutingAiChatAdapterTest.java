@@ -1,6 +1,6 @@
 package com.example.backend.interfaces.config;
 
-import com.example.backend.infrastructure.tsagent.GrayRoutingAiChatAdapter;
+import com.example.backend.infrastructure.dsh.GrayRoutingAiChatAdapter;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

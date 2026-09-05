@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 @Data
 public class KnowledgeOutboxEntity {
     private Long id;
+    private String eventId;
     private Long documentId;
     private String eventType;
     private String payload;
@@ -15,4 +16,6 @@ public class KnowledgeOutboxEntity {
     private String lastError;
     private LocalDateTime createdAt;
     private LocalDateTime nextRetryAt;
+    private LocalDateTime lockedAt;
+    private LocalDateTime completedAt;
 }

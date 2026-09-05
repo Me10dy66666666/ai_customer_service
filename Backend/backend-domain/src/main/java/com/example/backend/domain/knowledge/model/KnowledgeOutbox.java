@@ -17,6 +17,7 @@ public class KnowledgeOutbox {
     public static final String EVENT_DELETE = "DIFY_DELETE";
 
     private Long id;
+    private String eventId;
     private Long documentId;
     private String eventType;
     private String payload;
@@ -26,6 +27,8 @@ public class KnowledgeOutbox {
     private String lastError;
     private LocalDateTime createdAt;
     private LocalDateTime nextRetryAt;
+    private LocalDateTime lockedAt;
+    private LocalDateTime completedAt;
 
     public boolean isPending() {
         return STATUS_PENDING.equals(status);
