@@ -40,6 +40,8 @@
   config:
     provider: deepseek-official
     model: deepseek-v4-pro
+    workspaceContext:
+      maxBytes: 65536
     customerServiceGateway:
       provider: deepseek-official
       model: deepseek-v4-pro

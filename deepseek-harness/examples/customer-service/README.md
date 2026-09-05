@@ -10,8 +10,12 @@ persistence + ACP bridge).
 DEEPSEEK_API_KEY=... DSH_GATEWAY_SERVICE_TOKEN=... PIPELINE_SERVICE_TOKEN=... \
 AGENT_CAPABILITY_TOKEN=... DATA_PIPELINE_URL=http://localhost:3002 \
 BACKEND_BASE_URL=http://localhost:8081 \
-pnpm dsh --profile customer-service
+node --import tsx packages/examples/acp-demo/src/bin.ts \
+  --config examples/customer-service/cordis.yml
 ```
+
+This example is a direct ACP composition rather than an installed `dsh` profile,
+so it is launched with the ACP demo entry point and its explicit config path.
 
 or via the ACP demo entry. Requires the data-pipeline service to be running (see
 `../../../data-pipeline`).

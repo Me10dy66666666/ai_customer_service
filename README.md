@@ -110,6 +110,12 @@ npm run build:lib:host
 
 设置 `DEEPSEEK_API_KEY`、`DSH_GATEWAY_SERVICE_TOKEN`、`PIPELINE_SERVICE_TOKEN`、`BACKEND_BASE_URL=http://localhost:8081` 和 `DATA_PIPELINE_URL=http://localhost:3002` 后，按 DSH CLI 文档使用 [`examples/customer-service/cordis.yml`](deepseek-harness/examples/customer-service/cordis.yml) 启动 headless 组合。组合默认监听 `127.0.0.1:3001`。
 
+从 `deepseek-harness` 目录直接运行该示例配置：
+
+```bash
+node --import tsx packages/examples/acp-demo/src/bin.ts --config examples/customer-service/cordis.yml
+```
+
 ### 4. 启动 Spring Boot 后端
 
 设置以下生产必需变量后执行：
@@ -124,7 +130,8 @@ AGENT_PROVIDER                     默认 dsh；可选 dify 或 gray
 
 ```bash
 cd Backend
-mvn -o -pl backend-boot -am spring-boot:run
+mvn -o -pl backend-boot -am package
+java -jar backend-boot/target/backend-boot-0.0.1-SNAPSHOT.jar
 ```
 
 应用默认监听 `http://localhost:8081`。首次部署先执行 [`Backend/sql/init.sql`](Backend/sql/init.sql) 和 Flyway 迁移。
