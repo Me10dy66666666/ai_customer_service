@@ -119,24 +119,21 @@ dify:
     api-key: ${DIFY_WORKORDER_KEY:}
     workflow: /workflows/run
 
-# DeepSeek Harness 以 headless 方式运行，由项目自有 BFF 暴露窄 HTTP 边界。
-dsh:
-  gateway:
-    base-url: ${DSH_GATEWAY_BASE_URL:http://localhost:3001}
-    service-token: ${DSH_GATEWAY_SERVICE_TOKEN:}
-    model: ${DSH_GATEWAY_MODEL:deepseek-v4-pro}
-    connect-timeout-ms: ${DSH_CONNECT_TIMEOUT_MS:3000}
-    read-timeout-ms: ${DSH_READ_TIMEOUT_MS:120000}
-    max-concurrent: ${DSH_MAX_CONCURRENT:32}
-    failure-threshold: ${DSH_FAILURE_THRESHOLD:5}
-    circuit-cooldown-ms: ${DSH_CIRCUIT_COOLDOWN_MS:30000}
-    requests-per-second: ${DSH_REQUESTS_PER_SECOND:20}
+# Pi Agent Runtime is the default. Dify remains an explicit compatibility fallback.
+pi:
+  runtime:
+    base-url: ${PI_RUNTIME_BASE_URL:http://localhost:3001}
+    service-token: ${PI_RUNTIME_SERVICE_TOKEN:}
+    model: ${MODEL_NAME:deepseek-v4-pro}
+    connect-timeout-ms: ${PI_RUNTIME_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${PI_RUNTIME_READ_TIMEOUT_MS:120000}
+    max-concurrent: ${PI_RUNTIME_MAX_CONCURRENT:32}
+    failure-threshold: ${PI_RUNTIME_FAILURE_THRESHOLD:5}
+    circuit-cooldown-ms: ${PI_RUNTIME_CIRCUIT_COOLDOWN_MS:30000}
+    requests-per-second: ${PI_RUNTIME_REQUESTS_PER_SECOND:20}
 
-# Agent 提供者选择: dsh（生产默认）| dify（显式降级）| gray
 agent:
-  provider: ${AGENT_PROVIDER:dsh}
-  gray:
-    dsh-percentage: ${DSH_GRAY_PERCENTAGE:0}
+  runtime: ${AGENT_RUNTIME:pi}
 
 app:
   cache:

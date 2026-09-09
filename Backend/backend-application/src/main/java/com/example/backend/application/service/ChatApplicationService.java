@@ -5,7 +5,7 @@ import com.example.backend.domain.chat.event.ConversationCompletedEvent;
 import com.example.backend.domain.chat.event.SatisfactionRatedEvent;
 import com.example.backend.domain.chat.model.ConsultationLog;
 import com.example.backend.domain.chat.repository.ConsultationLogRepository;
-import com.example.backend.domain.chat.service.AiChatPort;
+import com.example.backend.domain.chat.service.AgentRuntimePort;
 import com.example.backend.domain.chat.service.SessionStatePort;
 import com.example.backend.infrastructure.persistence.mapper.ChatMessageMapper;
 import com.example.backend.domain.order.model.HistoricalOrder;
@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 public class ChatApplicationService {
     private final ConsultationLogRepository consultationLogRepository;
     private final HistoricalOrderRepository orderRepository;
-    private final AiChatPort aiChatPort;
+    private final AgentRuntimePort agentRuntimePort;
     private final DomainEventPublisher eventPublisher;
     private final SessionStatePort sessionStatePort;
     private final ChatMessageMapper chatMessageMapper;
@@ -45,14 +45,14 @@ public class ChatApplicationService {
 
     public ChatApplicationService(ConsultationLogRepository consultationLogRepository,
                                    HistoricalOrderRepository orderRepository,
-                                   AiChatPort aiChatPort,
+                                   AgentRuntimePort agentRuntimePort,
                                    DomainEventPublisher eventPublisher,
                                    SessionStatePort sessionStatePort,
                                    ChatMessageMapper chatMessageMapper,
                                    ObjectMapper objectMapper) {
         this.consultationLogRepository = consultationLogRepository;
         this.orderRepository = orderRepository;
-        this.aiChatPort = aiChatPort;
+        this.agentRuntimePort = agentRuntimePort;
         this.eventPublisher = eventPublisher;
         this.sessionStatePort = sessionStatePort;
         this.chatMessageMapper = chatMessageMapper;
@@ -109,9 +109,9 @@ public class ChatApplicationService {
             errorMessageRef[0] = errorMsg;
         };
 
-        String difyUser = userId != null ? String.valueOf(userId) : sessionId;
+        String runtimeUser = userId != null ? String.valueOf(userId) : sessionId;
         try {
-            aiChatPort.sendStreamingMessage(content, difyUser, conversationIdRef[0], inputs, dataConsumer, errorConsumer);
+            agentRuntimePort.sendStreamingMessage(content, runtimeUser, conversationIdRef[0], inputs, dataConsumer, errorConsumer);
         } catch (Exception e) {
             errorMessageRef[0] = e.getMessage();
             throw new ExternalServiceException("AI chat service error: " + e.getMessage(), e);

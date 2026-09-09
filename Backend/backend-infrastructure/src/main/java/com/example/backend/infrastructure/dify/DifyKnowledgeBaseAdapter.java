@@ -8,7 +8,7 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 
-/** Dify remains a temporary knowledge-management fallback while DSH owns Agent orchestration. */
+/** Dify remains a temporary knowledge-management fallback while Pi owns Agent orchestration. */
 @Component
 @RequiredArgsConstructor
 public class DifyKnowledgeBaseAdapter implements KnowledgeBasePort {

@@ -60,7 +60,7 @@ Thumbs.db
 target/
 
 # ============================================================
-# Node.js / TypeScript（Frontend · data-pipeline · DeepSeek Harness）
+# Node.js / TypeScript（Frontend · data-pipeline · agent-runtime）
 # ============================================================
 node_modules/
 dist/

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
-/** Central metric vocabulary shared by the Java BFF and DSH integration boundary. */
+/** Central metric vocabulary shared by the Java BFF and all Agent runtime boundaries. */
 @Component
 public class AgentRuntimeMetrics {
 
