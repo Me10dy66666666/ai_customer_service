@@ -11,7 +11,7 @@
   <img alt="Spring Boot 4" src="https://img.shields.io/badge/Spring%20Boot-4-6DB33F?logo=springboot&logoColor=white" />
   <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white" />
   <img alt="PostgreSQL + pgvector" src="https://img.shields.io/badge/PostgreSQL-pgvector-336791?logo=postgresql&logoColor=white" />
-  <img alt="DeepSeek Harness" src="https://img.shields.io/badge/AI-DeepSeek%20Harness-5B5BD6" />
+  <img alt="Pi Agent Runtime" src="https://img.shields.io/badge/AI-Pi%20Agent%20Runtime-5B5BD6" />
 </p>
 
 > The platform keeps business truth in Java services, gives agents only scoped context and tools, and requires an authenticated user confirmation before durable writes such as creating a work order.
@@ -23,7 +23,7 @@
 | Customer chat | RAG answers, streaming responses, order lookup, and human handoff | Vue 3 + Spring Boot |
 | Agent desk | Work-order queue, assignment, replies, SLA visibility, and realtime updates | Vue 3 + WebSocket/SSE |
 | Knowledge center | Upload, parse, chunk, embed, review, publish, archive, and role-filter documents | data-pipeline + pgvector |
-| AI orchestration | Session lifecycle, prompt budgets, tool calls, retries, and recovery boundaries | DeepSeek Harness |
+| AI orchestration | Session lifecycle, prompt budgets, tool calls, retries, and recovery boundaries | Pi Agent Runtime |
 | Governance | JWT authentication, RBAC, capability tokens, audit events, and metrics | Spring Security + Micrometer |
 
 ## Product surfaces
@@ -58,7 +58,7 @@ flowchart TB
   end
 
   subgraph AI[Headless AI runtime]
-    DSH[DSH customer-service Gateway]
+    PI[Pi customer-service Runtime]
     CORE[Agent Core / Session / Tool loop]
     LLM[DeepSeek or OpenAI-compatible model]
   end
@@ -73,10 +73,10 @@ flowchart TB
 
   UI -->|REST + WebSocket| API
   API --> AUTH
-  API --> DSH
+  API --> PI
   API --> MYSQL
   API --> REDIS
-  DSH --> CORE
+  PI --> CORE
   CORE --> LLM
   CORE -->|search_knowledge| PIPE
   PIPE --> PG
@@ -95,16 +95,16 @@ sequenceDiagram
   actor Customer
   participant Web as Vue client
   participant API as Spring Boot API
-  participant DSH as DSH gateway
+  participant PI as Pi Agent Runtime
   participant RAG as data-pipeline
   participant DB as MySQL / Redis
 
   Customer->>Web: Ask a question
   Web->>API: Send authenticated chat request
-  API->>DSH: Create or resume session with capability token
-  DSH->>RAG: Retrieve scoped knowledge
-  RAG-->>DSH: Context + citation metadata
-  DSH-->>API: Stream model response / tool proposal
+  API->>PI: Create or resume session with capability token
+  PI->>RAG: Retrieve scoped knowledge
+  RAG-->>PI: Context + citation metadata
+  PI-->>API: Stream model response / tool proposal
   API-->>Web: Stream answer to customer
 
   opt Durable action requested
@@ -123,7 +123,7 @@ sequenceDiagram
 - **Retrieval is filtered before it reaches the model.** `data-pipeline` applies metadata, expiry, parent-child document, and role ACL constraints.
 - **Writes are two-phase.** `create_work_order` produces a short-lived Redis proposal; a logged-in user must confirm it before the durable write.
 - **Identity is not model-controlled.** The Java layer creates a short-lived user/session capability token and passes it through `X-Agent-Capability-Token`; it is never placed in model context.
-- **Provider choice is explicit.** `dsh` is the default provider, `dify` is an explicit fallback, and `gray` supports stable per-session routing.
+- **Runtime choice is explicit.** Pi is the primary runtime; Dify is available only as an explicit compatibility fallback.
 
 ## Repository map
 
@@ -131,14 +131,13 @@ sequenceDiagram
 Backend/                  Spring Boot multi-module business backend
   backend-domain/         Domain models, repositories, and ports
   backend-application/    Use cases, sessions, and async workflows
-  backend-infrastructure/ MySQL/Redis/RabbitMQ/ES/Dify/DSH adapters
+  backend-infrastructure/ MySQL/Redis/RabbitMQ/ES/Pi/Dify adapters
   backend-interfaces/     REST, WebSocket, security, and tool gateway
   backend-boot/            Runtime configuration and application entrypoint
   sql/                     MySQL initialization and migrations
 Frontend/                 Vue 3 + Vite client
 data-pipeline/            Parsing, chunking, embeddings, and pgvector HTTP service
-deepseek-harness/         DSH source workspace and customer-service composition
-history/                  Archived material excluded from the active workflow
+agent-runtime/            Pi Agent Runtime and Java capability-gateway tools
 ENGINEERING_AUDIT.md      Engineering audit, hardening notes, and verification record
 README.md                 English project guide
 README-CN.md              Chinese project guide
@@ -150,11 +149,11 @@ README-CN.md              Chinese project guide
 | --- | --- |
 | JDK | 21+ |
 | Maven | 3.9+ |
-| Node.js | 22+ for `data-pipeline`; 22.19+ or 24+ for DSH |
+| Node.js | 22+ for `data-pipeline`; 22.19+ for Pi Agent Runtime |
 | Docker Compose | PostgreSQL, Redis, RabbitMQ, Elasticsearch, and LibreOffice |
 | PostgreSQL | 16 with the pgvector extension |
 | MySQL | 8.0+ |
-| pnpm | 11.7.0 for the DSH workspace |
+| npm | Bundled with Node.js; used by `data-pipeline` and `agent-runtime` |
 
 ## Quick start
 
@@ -190,32 +189,34 @@ npm run migrate:chroma -- C:/path/to/export.json customer-service
 
 The migration reads the export and writes to pgvector without adding the legacy vector store to the runtime path.
 
-### 3. Start the DSH customer-service composition
+### 3. Start the Pi Agent Runtime
 
 ```bash
-cd deepseek-harness
-pnpm install
-pnpm build:lib:host
+cd agent-runtime
+npm install
 ```
 
 Provide the following runtime variables:
 
 ```text
-DEEPSEEK_API_KEY              Model provider credential
-DSH_GATEWAY_SERVICE_TOKEN     Shared token expected by the Java backend
-PIPELINE_SERVICE_TOKEN        Token used when DSH calls data-pipeline
+PI_RUNTIME_SERVICE_TOKEN      Shared token expected by the Java backend
+MODEL_PROVIDER                deepseek or openai
+MODEL_NAME                    Model identifier, for example deepseek-v4-pro
+MODEL_API_KEY                 Model provider credential
+MODEL_BASE_URL                Optional OpenAI-compatible endpoint override
+PIPELINE_SERVICE_TOKEN        Token used when Pi calls data-pipeline
 BACKEND_BASE_URL              http://localhost:8081
-DATA_PIPELINE_URL             http://localhost:3002
+DATA_PIPELINE_URL              http://localhost:3002
 ```
 
 Then launch the explicit ACP composition:
 
 ```bash
-node --import tsx packages/examples/acp-demo/src/bin.ts \
-  --config examples/customer-service/cordis.yml
+npm run build
+npm start
 ```
 
-The gateway listens on `127.0.0.1:3001`. This customer-service example is a direct ACP composition, not an installed `dsh` profile.
+The runtime listens on `127.0.0.1:3001` and exposes `/health`, the blocking BFF contract, and the SSE streaming contract.
 
 ### 4. Build and start the backend
 
@@ -224,9 +225,9 @@ Initialize MySQL with [`Backend/sql/init.sql`](Backend/sql/init.sql), then provi
 ```text
 JWT_SECRET                         At least 32 UTF-8 bytes; no insecure default
 DB_URL / DB_USERNAME / DB_PASSWORD MySQL connection settings
-DSH_GATEWAY_SERVICE_TOKEN          Must match the DSH gateway
-DSH_GATEWAY_BASE_URL               Defaults to http://localhost:3001
-AGENT_PROVIDER                     dsh (default), dify, or gray
+PI_RUNTIME_SERVICE_TOKEN           Must match the Pi runtime
+PI_RUNTIME_BASE_URL                Defaults to http://localhost:3001
+AGENT_RUNTIME                      pi (default), or explicit dify compatibility fallback
 ```
 
 Build and run:
@@ -255,7 +256,7 @@ Open `http://localhost:5173`. Vite proxies `/api` and `/ws` to the backend on po
 | --- | --- | --- |
 | Frontend | `http://localhost:5173` | Vue development server |
 | Backend | `http://localhost:8081` | REST, WebSocket, `/actuator/health` |
-| DSH gateway | `http://localhost:3001` | Headless customer-service AI boundary |
+| Pi Agent Runtime | `http://localhost:3001` | Headless customer-service AI boundary |
 | Data pipeline | `http://localhost:3002` | `/health`, `/ready`, secured RAG APIs |
 | MySQL | `localhost:3306` | Business facts and authorization data |
 | PostgreSQL | `localhost:5432` | pgvector knowledge chunks |
@@ -294,10 +295,11 @@ npm run typecheck
 npm test -- --run
 npm run build
 
-# DSH host aggregate
-cd deepseek-harness
-pnpm typecheck
-pnpm build:lib:host
+# Pi Agent Runtime
+cd agent-runtime
+npm run typecheck
+npm test
+npm run build
 
 # Java modules
 cd Backend
@@ -313,8 +315,7 @@ npm run test:unit
 - [Chinese guide](README-CN.md)
 - [Engineering audit and verification record](ENGINEERING_AUDIT.md)
 - [Backend database initialization](Backend/sql/init.sql)
-- [Customer-service DSH configuration](deepseek-harness/examples/customer-service/cordis.yml)
-- [Customer-service composition notes](deepseek-harness/examples/customer-service/README.md)
+- [Pi Agent Runtime guide](agent-runtime/README.md)
 - [Vector schema migration](data-pipeline/sql/migrations/V1__knowledge_chunks.sql)
 
 ## Contributing

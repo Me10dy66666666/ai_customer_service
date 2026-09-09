@@ -1,6 +1,6 @@
 package com.example.backend.infrastructure.dify;
 
-import com.example.backend.domain.chat.service.AiChatPort;
+import com.example.backend.domain.chat.service.AgentRuntimePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -8,15 +8,14 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Dify 平台适配器（默认）
+ * Dify 平台兼容回退适配器
  *
- * 当 agent.provider 未设置或设置为 "dify" 时激活。
- * 设置 agent.provider=dsh 将切换到 DeepSeek Harness 客服 Agent。
+ * 仅当显式设置 agent.runtime=dify 时激活，作为旧运行时兼容回退。
  */
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "agent.provider", havingValue = "dify", matchIfMissing = true)
-public class DifyAdapter implements AiChatPort {
+@ConditionalOnProperty(name = "agent.runtime", havingValue = "dify")
+public class DifyAdapter implements AgentRuntimePort {
     private final DifyClient difyClient;
 
     @Override

@@ -11,7 +11,7 @@
   <img alt="Spring Boot 4" src="https://img.shields.io/badge/Spring%20Boot-4-6DB33F?logo=springboot&logoColor=white" />
   <img alt="Vue 3" src="https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white" />
   <img alt="PostgreSQL + pgvector" src="https://img.shields.io/badge/PostgreSQL-pgvector-336791?logo=postgresql&logoColor=white" />
-  <img alt="DeepSeek Harness" src="https://img.shields.io/badge/AI-DeepSeek%20Harness-5B5BD6" />
+  <img alt="Pi Agent Runtime" src="https://img.shields.io/badge/AI-Pi%20Agent%20Runtime-5B5BD6" />
 </p>
 
 > 平台将业务事实保留在 Java 服务中，只向 Agent 提供受控上下文和工具；创建工单等持久化写入必须经过已认证用户确认。
@@ -23,7 +23,7 @@
 | 客户对话 | RAG 问答、流式响应、订单查询和人工转接 | Vue 3 + Spring Boot |
 | 客服工作台 | 工单队列、认领、回复、SLA 状态和实时更新 | Vue 3 + WebSocket/SSE |
 | 知识中心 | 文档上传、解析、分块、向量化、审核、发布、归档和角色过滤 | data-pipeline + pgvector |
-| AI 编排 | 会话生命周期、Prompt 预算、工具调用、重试和恢复边界 | DeepSeek Harness |
+| AI 编排 | 会话生命周期、Prompt 预算、工具调用、重试和恢复边界 | Pi Agent Runtime |
 | 治理能力 | JWT 鉴权、RBAC、capability token、审计事件和指标 | Spring Security + Micrometer |
 
 ## 产品展示
@@ -58,7 +58,7 @@ flowchart TB
   end
 
   subgraph AI[无头 AI 运行时]
-    DSH[DSH customer-service Gateway]
+    PI[Pi customer-service Runtime]
     CORE[Agent Core / Session / Tool loop]
     LLM[DeepSeek 或 OpenAI 兼容模型]
   end
@@ -73,10 +73,10 @@ flowchart TB
 
   UI -->|REST + WebSocket| API
   API --> AUTH
-  API --> DSH
+  API --> PI
   API --> MYSQL
   API --> REDIS
-  DSH --> CORE
+  PI --> CORE
   CORE --> LLM
   CORE -->|search_knowledge| PIPE
   PIPE --> PG
@@ -95,16 +95,16 @@ sequenceDiagram
   actor Customer as 客户
   participant Web as Vue 客户端
   participant API as Spring Boot API
-  participant DSH as DSH Gateway
+  participant PI as Pi Agent Runtime
   participant RAG as data-pipeline
   participant DB as MySQL / Redis
 
   Customer->>Web: 发起问题
   Web->>API: 发送已认证的对话请求
-  API->>DSH: 携带 capability token 创建或恢复会话
-  DSH->>RAG: 检索受控知识
-  RAG-->>DSH: 返回上下文与引用元数据
-  DSH-->>API: 流式返回模型回复或工具提案
+  API->>PI: 携带 capability token 创建或恢复会话
+  PI->>RAG: 检索受控知识
+  RAG-->>PI: 返回上下文与引用元数据
+  PI-->>API: 流式返回模型回复或工具提案
   API-->>Web: 将答案流式返回给客户
 
   opt 需要持久化操作
@@ -123,7 +123,7 @@ sequenceDiagram
 - **知识在进入模型前完成过滤。** `data-pipeline` 应用 metadata、过期时间、父子文档和角色 ACL 约束。
 - **写入采用两阶段流程。** `create_work_order` 只生成短期 Redis proposal，登录用户确认后才执行持久化写入。
 - **身份不由模型控制。** Java 层生成短期用户/会话 capability token，通过 `X-Agent-Capability-Token` 传递，绝不写入模型上下文。
-- **模型供应商选择显式化。** 默认使用 `dsh`，`dify` 用作显式降级，`gray` 支持稳定的按会话路由。
+- **运行时选择显式化。** Pi 是主运行时；Dify 仅作为显式兼容回退选项。
 
 ## 仓库结构
 
@@ -131,14 +131,13 @@ sequenceDiagram
 Backend/                  Spring Boot 多模块业务后端
   backend-domain/         领域模型、仓储和业务端口
   backend-application/    用例编排、会话和异步工作流
-  backend-infrastructure/ MySQL/Redis/RabbitMQ/ES/Dify/DSH 适配器
+  backend-infrastructure/ MySQL/Redis/RabbitMQ/ES/Pi/Dify 适配器
   backend-interfaces/     REST、WebSocket、安全和工具网关
   backend-boot/            运行配置和应用入口
   sql/                     MySQL 初始化和迁移
 Frontend/                 Vue 3 + Vite 客户端
 data-pipeline/            解析、分块、Embedding 和 pgvector HTTP 服务
-deepseek-harness/         DSH 源码工作区及客服组合
-history/                  不参与当前工作流的历史归档
+agent-runtime/            Pi Agent Runtime 与 Java capability-gateway 工具
 ENGINEERING_AUDIT.md      工程审计、加固说明和验证记录
 README.md                 英文项目说明
 README-CN.md              中文项目说明
@@ -150,11 +149,11 @@ README-CN.md              中文项目说明
 | --- | --- |
 | JDK | 21+ |
 | Maven | 3.9+ |
-| Node.js | data-pipeline 使用 22+；DSH 使用 22.19+ 或 24+ |
+| Node.js | data-pipeline 使用 22+；Pi Agent Runtime 使用 22.19+ |
 | Docker Compose | PostgreSQL、Redis、RabbitMQ、Elasticsearch 和 LibreOffice |
 | PostgreSQL | 16，并启用 pgvector 扩展 |
 | MySQL | 8.0+ |
-| pnpm | DSH 工作区使用 11.7.0 |
+| npm | 随 Node.js 提供，用于 `data-pipeline` 和 `agent-runtime` |
 
 ## 快速启动
 
@@ -190,20 +189,22 @@ npm run migrate:chroma -- C:/path/to/export.json customer-service
 
 该迁移只读取导出文件并写入 pgvector，不会将旧向量库加入运行时依赖。
 
-### 3. 启动 DSH 客服组合
+### 3. 启动 Pi Agent Runtime
 
 ```bash
-cd deepseek-harness
-pnpm install
-pnpm build:lib:host
+cd agent-runtime
+npm install
 ```
 
 设置以下运行时变量：
 
 ```text
-DEEPSEEK_API_KEY              模型供应商凭据
-DSH_GATEWAY_SERVICE_TOKEN     Java 后端与 DSH 共享的服务令牌
-PIPELINE_SERVICE_TOKEN        DSH 调用 data-pipeline 使用的令牌
+PI_RUNTIME_SERVICE_TOKEN      Java 后端与 Pi 共享的服务令牌
+MODEL_PROVIDER                deepseek 或 openai
+MODEL_NAME                    模型名称，例如 deepseek-v4-pro
+MODEL_API_KEY                 模型供应商凭据
+MODEL_BASE_URL                可选的 OpenAI 兼容端点覆盖
+PIPELINE_SERVICE_TOKEN        Pi 调用 data-pipeline 使用的令牌
 BACKEND_BASE_URL              http://localhost:8081
 DATA_PIPELINE_URL             http://localhost:3002
 ```
@@ -211,11 +212,11 @@ DATA_PIPELINE_URL             http://localhost:3002
 然后启动显式 ACP 组合：
 
 ```bash
-node --import tsx packages/examples/acp-demo/src/bin.ts \
-  --config examples/customer-service/cordis.yml
+npm run build
+npm start
 ```
 
-Gateway 监听 `127.0.0.1:3001`。客服示例是直接 ACP 组合，并不是已安装的 `dsh` profile。
+运行时监听 `127.0.0.1:3001`，提供 `/health`、阻塞式 BFF 协议和 SSE 流式协议。
 
 ### 4. 构建并启动后端
 
@@ -224,9 +225,9 @@ Gateway 监听 `127.0.0.1:3001`。客服示例是直接 ACP 组合，并不是�
 ```text
 JWT_SECRET                         至少 32 个 UTF-8 字节，不提供不安全默认值
 DB_URL / DB_USERNAME / DB_PASSWORD MySQL 连接配置
-DSH_GATEWAY_SERVICE_TOKEN          必须与 DSH Gateway 一致
-DSH_GATEWAY_BASE_URL               默认 http://localhost:3001
-AGENT_PROVIDER                     dsh（默认）、dify 或 gray
+PI_RUNTIME_SERVICE_TOKEN           必须与 Pi runtime 一致
+PI_RUNTIME_BASE_URL                默认 http://localhost:3001
+AGENT_RUNTIME                      pi（默认），或显式 dify 兼容回退
 ```
 
 构建并运行：
@@ -255,7 +256,7 @@ npm run dev
 | --- | --- | --- |
 | 前端 | `http://localhost:5173` | Vue 开发服务器 |
 | 后端 | `http://localhost:8081` | REST、WebSocket、`/actuator/health` |
-| DSH Gateway | `http://localhost:3001` | 无头客服 AI 边界 |
+| Pi Agent Runtime | `http://localhost:3001` | 无头客服 AI 边界 |
 | 数据管道 | `http://localhost:3002` | `/health`、`/ready` 和受保护的 RAG API |
 | MySQL | `localhost:3306` | 业务事实和鉴权数据 |
 | PostgreSQL | `localhost:5432` | pgvector 知识分块 |
@@ -294,10 +295,11 @@ npm run typecheck
 npm test -- --run
 npm run build
 
-# DSH host aggregate
-cd deepseek-harness
-pnpm typecheck
-pnpm build:lib:host
+# Pi Agent Runtime
+cd agent-runtime
+npm run typecheck
+npm test
+npm run build
 
 # Java modules
 cd Backend
@@ -313,8 +315,7 @@ npm run test:unit
 - [English guide](README.md)
 - [工程审计与验证记录](ENGINEERING_AUDIT.md)
 - [后端数据库初始化](Backend/sql/init.sql)
-- [客服 DSH 配置](deepseek-harness/examples/customer-service/cordis.yml)
-- [客服组合说明](deepseek-harness/examples/customer-service/README.md)
+- [Pi Agent Runtime 指南](agent-runtime/README.md)
 - [向量表结构迁移](data-pipeline/sql/migrations/V1__knowledge_chunks.sql)
 
 ## 贡献约定
